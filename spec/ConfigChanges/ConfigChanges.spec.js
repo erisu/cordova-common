@@ -42,14 +42,15 @@ var mungeutil = require('../../src/ConfigChanges/munge-util');
 var PlatformJson = require('../../src/PlatformJson');
 var PluginInfoProvider = require('../../src/PluginInfo/PluginInfoProvider');
 var PluginInfo = require('../../src/PluginInfo/PluginInfo');
-var ConfigParser = require('../../src/ConfigParser/ConfigParser');
-var xml = path.join(__dirname, '../fixtures/test-config.xml');
-var editconfig_xml = path.join(__dirname, '../fixtures/test-editconfig.xml');
-var configfile_xml = path.join(__dirname, '../fixtures/test-configfile.xml');
-var configfile0_xml = path.join(__dirname, '../fixtures/test-configfile0.xml');
-var configfile1_xml = path.join(__dirname, '../fixtures/test-configfile1.xml');
-var configfile2_xml = path.join(__dirname, '../fixtures/test-configfile2.xml');
-var cfg = new ConfigParser(xml);
+
+// var ConfigParser = require('../../src/ConfigParser/ConfigParser');
+// var xml = path.join(__dirname, '../fixtures/test-config.xml');
+// var editconfig_xml = path.join(__dirname, '../fixtures/test-editconfig.xml');
+// var configfile_xml = path.join(__dirname, '../fixtures/test-configfile.xml');
+// var configfile0_xml = path.join(__dirname, '../fixtures/test-configfile0.xml');
+// var configfile1_xml = path.join(__dirname, '../fixtures/test-configfile1.xml');
+// var configfile2_xml = path.join(__dirname, '../fixtures/test-configfile2.xml');
+// var cfg = new ConfigParser(xml);
 
 // TODO: dont do fs so much
 
@@ -323,169 +324,169 @@ describe('config-changes module', function () {
                     var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
                     expect(function () { munger.process(plugins_dir); }).toThrow(new Error('There was a conflict trying to modify attributes with <edit-config> in plugin org.test.editconfigtest_two. The conflicting plugin, org.test.editconfigtest, already modified the same attributes. The conflict must be resolved before org.test.editconfigtest_two can be added. You may use --force to add the plugin and overwrite the conflicting attributes.'));
                 });
-                it('should call graftXMLMerge for every new config.xml config munge with mode \'merge\' it introduces', function () {
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
+                // it('should call graftXMLMerge for every new config.xml config munge with mode \'merge\' it introduces', function () {
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
 
-                    var spy = spyOn(xml_helpers, 'graftXMLMerge').and.returnValue(true);
+                //     var spy = spyOn(xml_helpers, 'graftXMLMerge').and.returnValue(true);
 
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson);
-                    munger.add_config_changes(cfg, true);
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson);
+                //     munger.add_config_changes(cfg, true);
 
-                    expect(spy.calls.count()).toEqual(1);
-                    expect(spy.calls.argsFor(0)[2]).toEqual('/manifest/uses-sdk');
-                });
-                it('should call graftXMLOverwrite for every new config.xml config munge with mode \'overwrite\' it introduces', function () {
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     expect(spy.calls.count()).toEqual(1);
+                //     expect(spy.calls.argsFor(0)[2]).toEqual('/manifest/uses-sdk');
+                // });
+                // it('should call graftXMLOverwrite for every new config.xml config munge with mode \'overwrite\' it introduces', function () {
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
 
-                    var spy = spyOn(xml_helpers, 'graftXMLOverwrite').and.returnValue(true);
+                //     var spy = spyOn(xml_helpers, 'graftXMLOverwrite').and.returnValue(true);
 
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson);
-                    munger.add_config_changes(cfg, true);
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson);
+                //     munger.add_config_changes(cfg, true);
 
-                    expect(spy.calls.count()).toEqual(1);
-                    expect(spy.calls.argsFor(0)[2]).toEqual('/manifest/uses-sdk');
-                });
-                it('should call pruneXMLRemove for every new config.xml config munge with mode \'remove\' it introduces', function () {
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     expect(spy.calls.count()).toEqual(1);
+                //     expect(spy.calls.argsFor(0)[2]).toEqual('/manifest/uses-sdk');
+                // });
+                // it('should call pruneXMLRemove for every new config.xml config munge with mode \'remove\' it introduces', function () {
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
 
-                    // var spy = spyOn(xml_helpers, 'pruneXMLRemove').andReturn(true);
+                //     // var spy = spyOn(xml_helpers, 'pruneXMLRemove').andReturn(true);
 
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson);
-                    munger.add_config_changes(cfg, true).save_all();
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson);
+                //     munger.add_config_changes(cfg, true).save_all();
 
-                    var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    var sdk = am_xml.find('./uses-sdk');
+                //     var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     var sdk = am_xml.find('./uses-sdk');
 
-                    expect(sdk).toBeDefined();
-                    expect(sdk.attrib['android:maxSdkVersion']).toBeUndefined();
-                });
-                it('should overwrite plugin config munge for every conflicting config.xml config munge', function () {
-                    install_plugin(editconfigplugin_two);
+                //     expect(sdk).toBeDefined();
+                //     expect(sdk.attrib['android:maxSdkVersion']).toBeUndefined();
+                // });
+                // it('should overwrite plugin config munge for every conflicting config.xml config munge', function () {
+                //     install_plugin(editconfigplugin_two);
 
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
-                    platformJson.addInstalledPluginToPrepareQueue('org.test.editconfigtest_two', {}, true, true);
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     platformJson.addInstalledPluginToPrepareQueue('org.test.editconfigtest_two', {}, true, true);
 
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
-                    munger.process(plugins_dir);
-                    munger.add_config_changes(cfg, true).save_all();
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
+                //     munger.process(plugins_dir);
+                //     munger.add_config_changes(cfg, true).save_all();
 
-                    var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    var sdk = am_xml.find('./uses-sdk');
-                    expect(sdk).toBeDefined();
-                    expect(sdk.attrib['android:targetSdkVersion']).toEqual('24');
-                });
-                it('should overwrite config.xml config munge for every new config.xml config munge that has the same target', function () {
-                    var editconfig_cfg = new ConfigParser(editconfig_xml);
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
+                //     var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     var sdk = am_xml.find('./uses-sdk');
+                //     expect(sdk).toBeDefined();
+                //     expect(sdk.attrib['android:targetSdkVersion']).toEqual('24');
+                // });
+                // it('should overwrite config.xml config munge for every new config.xml config munge that has the same target', function () {
+                //     var editconfig_cfg = new ConfigParser(editconfig_xml);
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
 
-                    munger.add_config_changes(cfg, true).save_all();
-                    munger.add_config_changes(editconfig_cfg, true).save_all();
+                //     munger.add_config_changes(cfg, true).save_all();
+                //     munger.add_config_changes(editconfig_cfg, true).save_all();
 
-                    var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    var sdk = am_xml.find('./uses-sdk');
-                    expect(sdk).toBeDefined();
-                    expect(sdk.attrib['android:targetSdkVersion']).toEqual('23');
-                    expect(sdk.attrib['android:minSdkVersion']).toEqual('5');
-                    expect(sdk.attrib['android:maxSdkVersion']).toBeUndefined();
-                });
-                it('should recover AndroidManifest after removing editconfig', function () {
-                    var editconfig_cfg = new ConfigParser(editconfig_xml);
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
+                //     var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     var sdk = am_xml.find('./uses-sdk');
+                //     expect(sdk).toBeDefined();
+                //     expect(sdk.attrib['android:targetSdkVersion']).toEqual('23');
+                //     expect(sdk.attrib['android:minSdkVersion']).toEqual('5');
+                //     expect(sdk.attrib['android:maxSdkVersion']).toBeUndefined();
+                // });
+                // it('should recover AndroidManifest after removing editconfig', function () {
+                //     var editconfig_cfg = new ConfigParser(editconfig_xml);
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
 
-                    // once add editconfig
-                    munger.add_config_changes(cfg, true).save_all();
-                    munger.add_config_changes(editconfig_cfg, true).save_all();
+                //     // once add editconfig
+                //     munger.add_config_changes(cfg, true).save_all();
+                //     munger.add_config_changes(editconfig_cfg, true).save_all();
 
-                    var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    var sdk = am_xml.find('./uses-sdk');
-                    expect(sdk).toBeDefined();
-                    expect(sdk.attrib['android:targetSdkVersion']).toEqual('23');
-                    expect(sdk.attrib['android:minSdkVersion']).toEqual('5');
-                    expect(sdk.attrib['android:maxSdkVersion']).toBeUndefined();
+                //     var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     var sdk = am_xml.find('./uses-sdk');
+                //     expect(sdk).toBeDefined();
+                //     expect(sdk.attrib['android:targetSdkVersion']).toEqual('23');
+                //     expect(sdk.attrib['android:minSdkVersion']).toEqual('5');
+                //     expect(sdk.attrib['android:maxSdkVersion']).toBeUndefined();
 
-                    // should recover
-                    munger.add_config_changes(cfg, true).save_all();
-                    am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    sdk = am_xml.find('./uses-sdk');
-                    expect(sdk).toBeDefined();
-                    expect(sdk.attrib['android:targetSdkVersion']).toEqual('24');
-                    expect(sdk.attrib['android:minSdkVersion']).toEqual('14');
-                    expect(sdk.attrib['android:maxSdkVersion']).toBeUndefined();
+                //     // should recover
+                //     munger.add_config_changes(cfg, true).save_all();
+                //     am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     sdk = am_xml.find('./uses-sdk');
+                //     expect(sdk).toBeDefined();
+                //     expect(sdk.attrib['android:targetSdkVersion']).toEqual('24');
+                //     expect(sdk.attrib['android:minSdkVersion']).toEqual('14');
+                //     expect(sdk.attrib['android:maxSdkVersion']).toBeUndefined();
 
-                });
-                it('should append new children to XML document tree', function () {
-                    var configfile_cfg = new ConfigParser(configfile_xml);
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
-                    munger.add_config_changes(configfile_cfg, true).save_all();
-                    var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    var activity = am_xml.find('./application/activity[@android:name="com.foo.Bar"]');
-                    expect(activity).toBeDefined();
-                    expect(activity.attrib['android:label']).toEqual('@string/app_name');
-                });
-                // testing the "after" attribute of the <config-file> tag in config.xml
-                it('should append new children to XML document tree in the correct order', function () {
-                    var configfile_cfg = new ConfigParser(configfile_xml);
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
-                    munger.add_config_changes(configfile_cfg, true).save_all();
-                    var am_file = fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8');
-                    expect(am_file.indexOf('android:name="zoo"')).toBeLessThan(am_file.indexOf('android:name="com.foo.Bar"'));
-                });
-                // testing removing <config-file> tag in config.xml
-                it('should recover AndroidManifest after removing config-file tag', function () {
-                    // add config-file same as previous
-                    var configfile_cfg = new ConfigParser(configfile_xml);
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
-                    munger.add_config_changes(configfile_cfg, true).save_all();
-                    var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    var activity = am_xml.find('./application/activity[@android:name="com.foo.Bar"]');
-                    expect(activity).not.toBeNull();
-                    // add removing config-file
-                    var configfile0_cfg = new ConfigParser(configfile0_xml); // removing config-file tag
-                    munger.add_config_changes(configfile0_cfg, true).save_all();
-                    am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    activity = am_xml.find('./application/activity[@android:name="com.foo.Bar"]');
-                    expect(activity).toBeNull();
-                });
-                it('should recover AndroidManifest if one of permission tags is removed', function () {
-                    fs.copySync(android_two_no_perms_project, temp);
-                    var configfile2_cfg = new ConfigParser(configfile2_xml);
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
-                    munger.add_config_changes(configfile2_cfg, true).save_all();
-                    var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    var permission_vibrate = am_xml.find('./uses-permission[@android:name="android.permission.VIBRATE"]');
-                    var permission_write = am_xml.find('./uses-permission[@android:name="android.permission.WRITE_EXTERNAL_STORAGE"]');
-                    var permission_contacts = am_xml.find('./uses-permission[@android:name="android.permission.READ_CONTACTS"]');
-                    expect(permission_vibrate).not.toBeNull();
-                    expect(permission_write).not.toBeNull();
-                    expect(permission_contacts).toBeNull();
-                    // add removing of of permission tag
-                    var configfile1_cfg = new ConfigParser(configfile1_xml); // removing one of permission tag
-                    munger.add_config_changes(configfile1_cfg, true).save_all();
-                    am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
-                    permission_vibrate = am_xml.find('./uses-permission[@android:name="android.permission.VIBRATE"]');
-                    permission_write = am_xml.find('./uses-permission[@android:name="android.permission.WRITE_EXTERNAL_STORAGE"]');
-                    permission_contacts = am_xml.find('./uses-permission[@android:name="android.permission.READ_CONTACTS"]');
-                    expect(permission_vibrate).not.toBeNull();
-                    expect(permission_write).toBeNull();
-                    expect(permission_contacts).toBeNull();
-                });
-                it('should throw error for conflicting plugin config munge with config.xml config munge', function () {
-                    install_plugin(editconfigplugin_two);
+                // });
+                // it('should append new children to XML document tree', function () {
+                //     var configfile_cfg = new ConfigParser(configfile_xml);
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
+                //     munger.add_config_changes(configfile_cfg, true).save_all();
+                //     var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     var activity = am_xml.find('./application/activity[@android:name="com.foo.Bar"]');
+                //     expect(activity).toBeDefined();
+                //     expect(activity.attrib['android:label']).toEqual('@string/app_name');
+                // });
+                // // testing the "after" attribute of the <config-file> tag in config.xml
+                // it('should append new children to XML document tree in the correct order', function () {
+                //     var configfile_cfg = new ConfigParser(configfile_xml);
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
+                //     munger.add_config_changes(configfile_cfg, true).save_all();
+                //     var am_file = fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8');
+                //     expect(am_file.indexOf('android:name="zoo"')).toBeLessThan(am_file.indexOf('android:name="com.foo.Bar"'));
+                // });
+                // // testing removing <config-file> tag in config.xml
+                // it('should recover AndroidManifest after removing config-file tag', function () {
+                //     // add config-file same as previous
+                //     var configfile_cfg = new ConfigParser(configfile_xml);
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
+                //     munger.add_config_changes(configfile_cfg, true).save_all();
+                //     var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     var activity = am_xml.find('./application/activity[@android:name="com.foo.Bar"]');
+                //     expect(activity).not.toBeNull();
+                //     // add removing config-file
+                //     var configfile0_cfg = new ConfigParser(configfile0_xml); // removing config-file tag
+                //     munger.add_config_changes(configfile0_cfg, true).save_all();
+                //     am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     activity = am_xml.find('./application/activity[@android:name="com.foo.Bar"]');
+                //     expect(activity).toBeNull();
+                // });
+                // it('should recover AndroidManifest if one of permission tags is removed', function () {
+                //     fs.copySync(android_two_no_perms_project, temp);
+                //     var configfile2_cfg = new ConfigParser(configfile2_xml);
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
+                //     munger.add_config_changes(configfile2_cfg, true).save_all();
+                //     var am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     var permission_vibrate = am_xml.find('./uses-permission[@android:name="android.permission.VIBRATE"]');
+                //     var permission_write = am_xml.find('./uses-permission[@android:name="android.permission.WRITE_EXTERNAL_STORAGE"]');
+                //     var permission_contacts = am_xml.find('./uses-permission[@android:name="android.permission.READ_CONTACTS"]');
+                //     expect(permission_vibrate).not.toBeNull();
+                //     expect(permission_write).not.toBeNull();
+                //     expect(permission_contacts).toBeNull();
+                //     // add removing of of permission tag
+                //     var configfile1_cfg = new ConfigParser(configfile1_xml); // removing one of permission tag
+                //     munger.add_config_changes(configfile1_cfg, true).save_all();
+                //     am_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(temp, 'AndroidManifest.xml'), 'utf-8')));
+                //     permission_vibrate = am_xml.find('./uses-permission[@android:name="android.permission.VIBRATE"]');
+                //     permission_write = am_xml.find('./uses-permission[@android:name="android.permission.WRITE_EXTERNAL_STORAGE"]');
+                //     permission_contacts = am_xml.find('./uses-permission[@android:name="android.permission.READ_CONTACTS"]');
+                //     expect(permission_vibrate).not.toBeNull();
+                //     expect(permission_write).toBeNull();
+                //     expect(permission_contacts).toBeNull();
+                // });
+                // it('should throw error for conflicting plugin config munge with config.xml config munge', function () {
+                //     install_plugin(editconfigplugin_two);
 
-                    var platformJson = PlatformJson.load(plugins_dir, 'android');
-                    platformJson.addInstalledPluginToPrepareQueue('org.test.editconfigtest_two', {}, true, true);
+                //     var platformJson = PlatformJson.load(plugins_dir, 'android');
+                //     platformJson.addInstalledPluginToPrepareQueue('org.test.editconfigtest_two', {}, true, true);
 
-                    var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
-                    munger.add_config_changes(cfg, true);
-                    expect(function () { munger.process(plugins_dir); }).toThrow(new Error('org.test.editconfigtest_two cannot be added. <edit-config> changes in this plugin conflicts with <edit-config> changes in config.xml. Conflicts must be resolved before plugin can be added.'));
+                //     var munger = new configChanges.PlatformMunger('android', temp, platformJson, pluginInfoProvider);
+                //     munger.add_config_changes(cfg, true);
+                //     expect(function () { munger.process(plugins_dir); }).toThrow(new Error('org.test.editconfigtest_two cannot be added. <edit-config> changes in this plugin conflicts with <edit-config> changes in config.xml. Conflicts must be resolved before plugin can be added.'));
 
-                });
+                // });
             });
             describe('of plist config files', function () {
                 it('Test 023 : should write empty string nodes with no whitespace', function () {
