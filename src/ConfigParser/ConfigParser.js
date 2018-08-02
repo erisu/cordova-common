@@ -17,269 +17,391 @@
     under the License.
 */
 
-var et = require('elementtree');
-var xml = require('../util/xml-helpers');
-var CordovaError = require('../CordovaError/CordovaError');
-var fs = require('fs-extra');
-var events = require('../events');
+const et = require('elementtree');
+const xml = require('../util/xml-helpers');
+const CordovaError = require('../CordovaError/CordovaError');
+const fs = require('fs-extra');
+const events = require('../events');
 
-/** Wraps a config.xml file */
-function ConfigParser (path) {
-    this.path = path;
-    try {
-        this.doc = xml.parseElementtreeSync(path);
-        this.cdvNamespacePrefix = getCordovaNamespacePrefix(this.doc);
-        et.register_namespace(this.cdvNamespacePrefix, 'http://cordova.apache.org/ns/1.0');
-    } catch (e) {
-        events.emit('error', 'Parsing ' + path + ' failed');
-        throw e;
-    }
-    var r = this.doc.getroot();
-    if (r.tag !== 'widget') {
-        throw new CordovaError(path + ' has incorrect root node name (expected "widget", was "' + r.tag + '")');
-    }
-}
-
-function getNodeTextSafe (el) {
-    return el && el.text && el.text.trim();
-}
-
-function findOrCreate (doc, name) {
-    var ret = doc.find(name);
-    if (!ret) {
-        ret = new et.Element(name);
-        doc.getroot().append(ret);
-    }
-    return ret;
-}
-
-function getCordovaNamespacePrefix (doc) {
-    var rootAtribs = Object.getOwnPropertyNames(doc.getroot().attrib);
-    var prefix = 'cdv';
-    for (var j = 0; j < rootAtribs.length; j++) {
-        if (rootAtribs[j].startsWith('xmlns:') &&
-            doc.getroot().attrib[rootAtribs[j]] === 'http://cordova.apache.org/ns/1.0') {
-            var strings = rootAtribs[j].split(':');
-            prefix = strings[1];
-            break;
+/**
+ * config.xml document editor wrapper.
+ */
+class DocumentEditor {
+    /**
+     * Document Editor Constructor
+     *
+     * @param {String} path config.xml path
+     */
+    constructor (path) {
+        try {
+            this.path = path;
+            this.doc = xml.parseElementtreeSync(this.path);
+            this.docroot = this.doc.getroot();
+        } catch (e) {
+            events.emit('error', `Parsing ${path} failed`);
+            throw e;
         }
     }
-    return prefix;
+
+    /**
+     * returns the parsed element tree.
+     *
+     * @returns {ElementTree} Document's element tree.
+     */
+    getDoc () {
+        return this.doc;
+    }
+
+    /**
+     * returns the root element of the parsed element tree document.
+     *
+     * @returns {Element} node element
+     */
+    getDocRoot () {
+        return this.docroot;
+    }
+
+    /**
+     * finds and returns the first element by the selector/path.
+     *
+     * @param {String} selectorPath lookup value
+     *
+     * @returns {Element} node element
+     */
+    find (selectorPath) {
+        return this.doc.find(selectorPath);
+    }
+
+    /**
+     * finds and returns all targeted elements that matches with the selector/path.
+     *
+     * @param {String} selectorPath lookup value
+     *
+     * @returns {Array} collection of node {Element}s
+     */
+    findAll (selectorPath) {
+        return this.doc.findall(selectorPath);
+    }
+
+    /**
+     * finds node by selector/path or appends new node if missing.
+     *
+     * @param {String} selectorPath
+     *
+     * @returns {Element} node element
+     */
+    findOrCreate (selectorPath) {
+        let element = this.doc.find(selectorPath);
+
+        if (element) return element;
+
+        element = new et.Element(selectorPath);
+        this.docroot.append(element);
+
+        return element;
+    }
+
+    /**
+     * returns the node's element string safe text.
+     *
+     * @param {ElementTreeNode} element node element
+     *
+     * @returns {String} element's text
+     */
+    getNodeTextSafe (element) {
+        return element && element.text && element.text.trim();
+    }
+
+    /**
+     * Finds the value of an element's attribute
+     *
+     * @param  {String} attributeName Name of the attribute to search for
+     * @param  {Array}  elements         An array of ElementTree nodes
+     *
+     * @returns {String}
+     */
+    findElementAttributeValue (attributeName, elements) {
+        elements = Array.isArray(elements) ? elements : [ elements ];
+
+        let value = elements.filter(elem => elem.attrib.name.toLowerCase() === attributeName.toLowerCase())
+            .map(filteredElements => filteredElements.attrib.value)
+            .pop();
+
+        return value || '';
+    }
+
+    /**
+     * Remoces all child items in the provided ElementTree node that matches the selector.
+     *
+     * @param {ElementTreeNode} element ElementTree Node
+     * @param {String} selectorPath selector/path lookup value
+     */
+    removeChildren (element, selectorPath) {
+        element.findall(selectorPath).forEach(child => element.remove(child));
+    }
+
+    /**
+     * writes document to config.xml path.
+     */
+    write () {
+        fs.writeFileSync(this.path, this.doc.write({indent: 4}), 'utf-8');
+    }
 }
 
 /**
- * Finds the value of an element's attribute
- * @param  {String} attributeName Name of the attribute to search for
- * @param  {Array}  elems         An array of ElementTree nodes
- * @return {String}
+ * Wraps the config.xml file
  */
-function findElementAttributeValue (attributeName, elems) {
+class ConfigParser {
+    constructor (path) {
+        this.path = path;
 
-    elems = Array.isArray(elems) ? elems : [ elems ];
-
-    var value = elems.filter(function (elem) {
-        return elem.attrib.name.toLowerCase() === attributeName.toLowerCase();
-    }).map(function (filteredElems) {
-        return filteredElems.attrib.value;
-    }).pop();
-
-    return value || '';
-}
-
-function removeChildren (el, selector) {
-    const matches = el.findall(selector);
-    matches.forEach(child => el.remove(child));
-}
-
-ConfigParser.prototype = {
-    getAttribute: function (attr) {
-        return this.doc.getroot().attrib[attr];
-    },
-
-    packageName: function () {
-        return this.getAttribute('id');
-    },
-    setPackageName: function (id) {
-        this.doc.getroot().attrib['id'] = id;
-    },
-    android_packageName: function () {
-        return this.getAttribute('android-packageName');
-    },
-    android_activityName: function () {
-        return this.getAttribute('android-activityName');
-    },
-    ios_CFBundleIdentifier: function () {
-        return this.getAttribute('ios-CFBundleIdentifier');
-    },
-    name: function () {
-        return getNodeTextSafe(this.doc.find('name'));
-    },
-    setName: function (name) {
-        var el = findOrCreate(this.doc, 'name');
-        el.text = name;
-    },
-    shortName: function () {
-        return this.doc.find('name').attrib['short'] || this.name();
-    },
-    setShortName: function (shortname) {
-        var el = findOrCreate(this.doc, 'name');
-        if (!el.text) {
-            el.text = shortname;
+        try {
+            this.editor = new DocumentEditor(this.path);
+            this.doc = this.editor.getDoc(); // only used in test spec.
+            this.docroot = this.editor.getDocRoot();
+            this.cdvNamespacePrefix = this.getCordovaNamespacePrefix();
+            et.register_namespace(this.cdvNamespacePrefix, 'http://cordova.apache.org/ns/1.0');
+        } catch (e) {
+            throw e;
         }
+
+        if (this.docroot.tag !== 'widget') {
+            throw new CordovaError(`${path} has incorrect root node name (expected "widget", was "${this.docroot.tag}")`);
+        }
+    }
+
+    /*
+     * Deprecated Methods
+     */
+    packageName () {
+        events.emit('log', 'method packageName has been deprecated, please update to use method getPackageName.');
+        return this.getPackageName();
+    }
+
+    name () {
+        events.emit('log', 'method name has been deprecated, please update to use method getName.');
+        return this.getName();
+    }
+
+    shortName () {
+        events.emit('log', 'method shortName has been deprecated, please update to use method getShortName.');
+        return this.getShortName();
+    }
+
+    description () {
+        events.emit('log', 'method description has been deprecated, please update to use method getDescription.');
+        return this.getDescription();
+    }
+
+    author () {
+        events.emit('log', 'method author has been deprecated, please update to use method getAuthor.');
+        return this.getAuthor();
+    }
+
+    version () {
+        events.emit('log', 'method version has been deprecated, please update to use method getVersion.');
+        return this.getVersion();
+    }
+
+    /*
+     * Document Manipulator Methods
+     */
+    findAllPlatformElement (element) {
+        return this.editor.findAll(`./platform[@name="${this.platform}"]/${element}`);
+    }
+
+    /*
+     * Primary Methods
+     */
+    setAttribute (attribute, value) {
+        this.docroot.attrib[attribute] = value;
+        return this;
+    }
+
+    getAttribute (attr) {
+        return this.docroot.attrib[attr];
+    }
+
+    setPackageName (id) {
+        this.setAttribute('id', id);
+        return this;
+    }
+
+    getPackageName () {
+        return this.getAttribute('id');
+    }
+
+    setName (name) {
+        this.editor.findOrCreate('name').text = name;
+        return this;
+    }
+
+    getName () {
+        return this.editor.getNodeTextSafe(this.editor.find('name'));
+    }
+
+    setShortName (shortname) {
+        let el = this.editor.findOrCreate('name');
+
+        if (!el.text) el.text = shortname;
+
         el.attrib['short'] = shortname;
-    },
-    description: function () {
-        return getNodeTextSafe(this.doc.find('description'));
-    },
-    setDescription: function (text) {
-        var el = findOrCreate(this.doc, 'description');
-        el.text = text;
-    },
-    version: function () {
+
+        return this;
+    }
+
+    getShortName () {
+        return this.editor.find('name').attrib['short'] || this.getName();
+    }
+
+    setDescription (text) {
+        this.editor.findOrCreate('description').text = text;
+        return this;
+    }
+
+    getDescription () {
+        return this.editor.getNodeTextSafe(this.editor.find('description'));
+    }
+
+    setVersion (version) {
+        this.setAttribute('version', version);
+        return this;
+    }
+
+    getVersion () {
         return this.getAttribute('version');
-    },
-    windows_packageVersion: function () {
-        return this.getAttribute('windows-packageVersion');
-    },
-    android_versionCode: function () {
-        return this.getAttribute('android-versionCode');
-    },
-    ios_CFBundleVersion: function () {
-        return this.getAttribute('ios-CFBundleVersion');
-    },
-    setVersion: function (value) {
-        this.doc.getroot().attrib['version'] = value;
-    },
-    author: function () {
-        return getNodeTextSafe(this.doc.find('author'));
-    },
-    getGlobalPreference: function (name) {
-        return findElementAttributeValue(name, this.doc.findall('preference'));
-    },
-    setGlobalPreference: function (name, value) {
-        var pref = this.doc.find('preference[@name="' + name + '"]');
+    }
+
+    getAuthor () {
+        return this.editor.getNodeTextSafe(this.editor.find('author'));
+    }
+
+    setGlobalPreference (name, value) {
+        let pref = this.editor.find(`preference[@name="${name}"]`);
+
         if (!pref) {
             pref = new et.Element('preference');
             pref.attrib.name = name;
-            this.doc.getroot().append(pref);
+            this.docroot.append(pref);
         }
+
         pref.attrib.value = value;
-    },
-    getPlatformPreference: function (name, platform) {
-        return findElementAttributeValue(name, this.doc.findall('./platform[@name="' + platform + '"]/preference'));
-    },
-    getPreference: function (name, platform) {
 
-        var platformPreference = '';
+        return this;
+    }
 
-        if (platform) {
-            platformPreference = this.getPlatformPreference(name, platform);
-        }
+    getGlobalPreference (name) {
+        return this.editor.findElementAttributeValue(name, this.editor.findAll('preference'));
+    }
 
-        return platformPreference || this.getGlobalPreference(name);
+    getPlatformPreference (name) {
+        return this.editor.findElementAttributeValue(name, this.findAllPlatformElement('preference'));
+    }
 
-    },
+    /**
+     * @todo Remove this method and use the exact method getGlobalPreference or getPlatformPreference.
+     * Alternative: Could this handle fetching globals first and then append platforms? As merge/override.
+     */
+    getPreference (name, platform) {
+        // events.emit('log', 'The getPreference method has been deprecated. Please replace with the exact method getGlobalPreference or getPlatformPreference.');
+        return platform ? this.getPlatformPreference(name) : this.getGlobalPreference(name);
+    }
+
+    parseResourceElements (element) {
+        return {
+            src: element.attrib.src,
+            width: +element.attrib.width || undefined,
+            height: +element.attrib.height || undefined
+        };
+    }
+
+    getDefaultResourceElement (ret) {
+        return ret.find(resource => !resource.width && !resource.height);
+    }
+
     /**
      * Returns all resources for the platform specified.
      * @param  {String} platform     The platform.
      * @param {string}  resourceName Type of static resources to return.
      *                               "icon" and "splash" currently supported.
-     * @return {Array}               Resources for the platform specified.
+     * @returns {Array}               Resources for the platform specified.
      */
-    getStaticResources: function (platform, resourceName) {
-        var ret = [];
-        var staticResources = [];
+    getStaticResources (platform, resourceName) {
+        let staticResources = [];
+
         if (platform) { // platform specific icons
-            this.doc.findall('./platform[@name="' + platform + '"]/' + resourceName).forEach(function (elt) {
-                elt.platform = platform; // mark as platform specific resource
-                staticResources.push(elt);
+            events.emit('log', 'The platform argument for getStaticResources has been deprecated. getStaticResources will use globally defined platform.');
+
+            this.findAllPlatformElement(resourceName).forEach((element) => {
+                element.platform = this.platform; // mark as platform specific resource
+                staticResources.push(element);
             });
         }
+
         // root level resources
-        staticResources = staticResources.concat(this.doc.findall(resourceName));
+        staticResources = staticResources.concat(this.editor.findAll(resourceName));
+
         // parse resource elements
-        var that = this;
-        staticResources.forEach(function (elt) {
-            var res = {};
-            res.src = elt.attrib.src;
-            res.target = elt.attrib.target || undefined;
-            res.density = elt.attrib['density'] || elt.attrib[that.cdvNamespacePrefix + ':density'] || elt.attrib['gap:density'];
-            res.platform = elt.platform || null; // null means icon represents default icon (shared between platforms)
-            res.width = +elt.attrib.width || undefined;
-            res.height = +elt.attrib.height || undefined;
+        let resources = staticResources.map(this.parseResourceElements, this);
+        resources = this.parseResourceMethods(resources);
 
-            // default icon
-            if (!res.width && !res.height && !res.density) {
-                ret.defaultResource = res;
-            }
-            ret.push(res);
-        });
+        return resources;
+    }
 
+    parseResourceMethods (resources) {
         /**
          * Returns resource with specified width and/or height.
          * @param  {number} width Width of resource.
          * @param  {number} height Height of resource.
-         * @return {Resource} Resource object or null if not found.
+         * @returns {Resource} Resource object or null if not found.
          */
-        ret.getBySize = function (width, height) {
-            return ret.filter(function (res) {
-                if (!res.width && !res.height) {
-                    return false;
-                }
-                return ((!res.width || (width === res.width)) &&
-                    (!res.height || (height === res.height)));
-            })[0] || null;
-        };
+        resources.getBySize = function (width, height) {
+            return resources.filter((res) => {
+                if (!res.width && !res.height) return false;
 
-        /**
-         * Returns resource with specified density.
-         * @param  {string} density Density of resource.
-         * @return {Resource}       Resource object or null if not found.
-         */
-        ret.getByDensity = function (density) {
-            return ret.filter(function (res) {
-                return res.density === density;
+                return (
+                    (!res.width || (width === res.width)) &&
+                    (!res.height || (height === res.height))
+                );
             })[0] || null;
         };
 
         /** Returns default icons */
-        ret.getDefault = function () {
-            return ret.defaultResource;
-        };
+        resources.getDefault = () => this.getDefaultResourceElement(resources);
 
-        return ret;
-    },
+        return resources;
+    }
 
     /**
      * Returns all icons for specific platform.
      * @param  {string} platform Platform name
-     * @return {Resource[]}      Array of icon objects.
+     * @returns {Resource[]}      Array of icon objects.
      */
-    getIcons: function (platform) {
+    getIcons (platform) {
         return this.getStaticResources(platform, 'icon');
-    },
+    }
 
     /**
      * Returns all splash images for specific platform.
      * @param  {string} platform Platform name
-     * @return {Resource[]}      Array of Splash objects.
+     * @returns {Resource[]}      Array of Splash objects.
      */
-    getSplashScreens: function (platform) {
+    getSplashScreens (platform) {
         return this.getStaticResources(platform, 'splash');
-    },
+    }
 
     /**
      * Returns all resource-files for a specific platform.
      * @param  {string} platform Platform name
      * @param  {boolean} includeGlobal Whether to return resource-files at the
      *                                 root level.
-     * @return {Resource[]}      Array of resource file objects.
+     * @returns {Resource[]}      Array of resource file objects.
      */
-    getFileResources: function (platform, includeGlobal) {
-        var fileResources = [];
+    getFileResources (platform, includeGlobal) {
+        let fileResources = [];
 
         if (platform) { // platform specific resources
-            fileResources = this.doc.findall('./platform[@name="' + platform + '"]/resource-file').map(function (tag) {
+            fileResources = this.findAllPlatformElement('resource-file').map(function (tag) {
                 return {
                     platform: platform,
                     src: tag.attrib.src,
@@ -292,7 +414,7 @@ ConfigParser.prototype = {
         }
 
         if (includeGlobal) {
-            this.doc.findall('resource-file').forEach(function (tag) {
+            this.editor.findAll('resource-file').forEach(function (tag) {
                 fileResources.push({
                     platform: platform || null,
                     src: tag.attrib.src,
@@ -305,56 +427,53 @@ ConfigParser.prototype = {
         }
 
         return fileResources;
-    },
+    }
 
     /**
      * Returns all hook scripts for the hook type specified.
      * @param  {String} hook     The hook type.
      * @param {Array}  platforms Platforms to look for scripts into (root scripts will be included as well).
-     * @return {Array}               Script elements.
+     * @returns {Array}               Script elements.
      */
-    getHookScripts: function (hook, platforms) {
-        var self = this;
-        var scriptElements = self.doc.findall('./hook');
+    getHookScripts (hook, platforms) {
+        let scriptElements = this.editor.findAll('./hook');
 
         if (platforms) {
-            platforms.forEach(function (platform) {
-                scriptElements = scriptElements.concat(self.doc.findall('./platform[@name="' + platform + '"]/hook'));
+            platforms.forEach((platform) => {
+                scriptElements = scriptElements.concat(this.editor.findAll(`./platform[@name="${platform}"]/hook`));
             });
         }
 
-        function filterScriptByHookType (el) {
-            return el.attrib.src && el.attrib.type && el.attrib.type.toLowerCase() === hook;
-        }
+        // Filter Scripts by Hook Type
+        return scriptElements.filter(el => el.attrib.src && el.attrib.type && el.attrib.type.toLowerCase() === hook);
+    }
 
-        return scriptElements.filter(filterScriptByHookType);
-    },
     /**
     * Returns a list of plugin (IDs).
     *
     * This function also returns any plugin's that
     * were defined using the legacy <feature> tags.
-    * @return {string[]} Array of plugin IDs
+    * @returns {string[]} Array of plugin IDs
     */
-    getPluginIdList: function () {
-        var plugins = this.doc.findall('plugin');
-        var result = plugins.map(function (plugin) {
+    getPluginIdList () {
+        let plugins = this.editor.findAll('plugin').map(function (plugin) {
             return plugin.attrib.name;
         });
-        var features = this.doc.findall('feature');
-        features.forEach(function (element) {
-            var idTag = element.find('./param[@name="id"]');
+
+        this.editor.findAll('feature').forEach(function (element) {
+            let idTag = element.find('./param[@name="id"]');
+
             if (idTag) {
-                result.push(idTag.attrib.value);
+                plugins.push(idTag.attrib.value);
             }
         });
-        return result;
-    },
-    getPlugins: function () {
-        return this.getPluginIdList().map(function (pluginId) {
-            return this.getPlugin(pluginId);
-        }, this);
-    },
+        return plugins;
+    }
+
+    getPlugins () {
+        return this.getPluginIdList().map((pluginId) => this.getPlugin(pluginId));
+    }
+
     /**
      * Adds a plugin element. Does not check for duplicates.
      * @name addPlugin
@@ -362,10 +481,12 @@ ConfigParser.prototype = {
      * @param {object} attributes name and spec are supported
      * @param {Array|object} variables name, value or arbitary object
      */
-    addPlugin: function (attributes, variables) {
+    addPlugin (attributes, variables) {
         if (!attributes && !attributes.name) return;
-        var el = new et.Element('plugin');
+
+        let el = new et.Element('plugin');
         el.attrib.name = attributes.name;
+
         if (attributes.spec) {
             el.attrib.spec = attributes.spec;
         }
@@ -373,18 +494,20 @@ ConfigParser.prototype = {
         // support arbitrary object as variables source
         if (variables && typeof variables === 'object' && !Array.isArray(variables)) {
             variables = Object.keys(variables)
-                .map(function (variableName) {
+                .map((variableName) => {
                     return {name: variableName, value: variables[variableName]};
                 });
         }
 
         if (variables) {
-            variables.forEach(function (variable) {
+            variables.forEach((variable) => {
                 el.append(new et.Element('variable', { name: variable.name, value: variable.value }));
             });
         }
-        this.doc.getroot().append(el);
-    },
+
+        this.docroot.append(el);
+    }
+
     /**
      * Retrives the plugin with the given id or null if not found.
      *
@@ -395,34 +518,41 @@ ConfigParser.prototype = {
      * @param {String} id
      * @returns {object} plugin including any variables
      */
-    getPlugin: function (id) {
-        if (!id) {
-            return undefined;
-        }
-        var pluginElement = this.doc.find('./plugin/[@name="' + id + '"]');
+    getPlugin (id) {
+        if (!id) return undefined;
+
+        let pluginElement = this.editor.find(`./plugin/[@name="${id}"]`);
+
         if (pluginElement === null) {
-            var legacyFeature = this.doc.find('./feature/param[@name="id"][@value="' + id + '"]/..');
+            let legacyFeature = this.editor.find(`./feature/param[@name="id"][@value="${id}"]/..`);
+
             if (legacyFeature) {
-                events.emit('log', 'Found deprecated feature entry for ' + id + ' in config.xml.');
-                return featureToPlugin(legacyFeature);
+                events.emit('log', `Found deprecated feature entry for ${id} in config.xml.`);
+                return this.featureToPlugin(legacyFeature);
             }
             return undefined;
         }
-        var plugin = {};
+
+        let plugin = {};
 
         plugin.name = pluginElement.attrib.name;
         plugin.spec = pluginElement.attrib.spec || pluginElement.attrib.src || pluginElement.attrib.version;
         plugin.variables = {};
-        var variableElements = pluginElement.findall('variable');
+
+        let variableElements = pluginElement.findall('variable');
+
         variableElements.forEach(function (varElement) {
-            var name = varElement.attrib.name;
-            var value = varElement.attrib.value;
+            let name = varElement.attrib.name;
+            let value = varElement.attrib.value;
+
             if (name) {
                 plugin.variables[name] = value;
             }
         });
+
         return plugin;
-    },
+    }
+
     /**
      * Remove the plugin entry with give name (id).
      *
@@ -432,171 +562,200 @@ ConfigParser.prototype = {
      * @function
      * @param id name of the plugin
      */
-    removePlugin: function (id) {
+    removePlugin (id) {
         if (!id) return;
-        const root = this.doc.getroot();
-        removeChildren(root, `./plugin/[@name="${id}"]`);
-        removeChildren(root, `./feature/param[@name="id"][@value="${id}"]/..`);
-    },
+
+        this.editor.removeChildren(this.docroot, `./plugin/[@name="${id}"]`);
+        this.editor.removeChildren(this.docroot, `./feature/param[@name="id"][@value="${id}"]/..`);
+    }
 
     // Add any element to the root
-    addElement: function (name, attributes) {
-        var el = et.Element(name);
-        for (var a in attributes) {
+    addElement (name, attributes) {
+        let el = et.Element(name);
+
+        for (let a in attributes) {
             el.attrib[a] = attributes[a];
         }
-        this.doc.getroot().append(el);
-    },
+
+        this.docroot.append(el);
+    }
 
     /**
      * Adds an engine. Does not check for duplicates.
      * @param  {String} name the engine name
      * @param  {String} spec engine source location or version (optional)
      */
-    addEngine: function (name, spec) {
+    addEngine (name, spec) {
         if (!name) return;
-        var el = et.Element('engine');
+
+        let el = et.Element('engine');
         el.attrib.name = name;
+
         if (spec) {
             el.attrib.spec = spec;
         }
-        this.doc.getroot().append(el);
-    },
+        this.docroot.append(el);
+    }
+
     /**
      * Removes all the engines with given name
      * @param  {String} name the engine name.
      */
-    removeEngine: function (name) {
-        removeChildren(this.doc.getroot(), `./engine/[@name="${name}"]`);
-    },
-    getEngines: function () {
-        var engines = this.doc.findall('./engine');
+    removeEngine (name) {
+        this.editor.removeChildren(this.docroot, `./engine/[@name="${name}"]`);
+    }
+
+    getEngines () {
+        let engines = this.editor.findAll('./engine');
+
         return engines.map(function (engine) {
-            var spec = engine.attrib.spec || engine.attrib.version;
+            let spec = engine.attrib.spec || engine.attrib.version;
+
             return {
-                'name': engine.attrib.name,
-                'spec': spec || null
+                name: engine.attrib.name,
+                spec: spec || null
             };
         });
-    },
+    }
+
     /* Get all the access tags */
-    getAccesses: function () {
-        var accesses = this.doc.findall('./access');
-        return accesses.map(function (access) {
-            var minimum_tls_version = access.attrib['minimum-tls-version']; /* String */
-            var requires_forward_secrecy = access.attrib['requires-forward-secrecy']; /* Boolean */
-            var requires_certificate_transparency = access.attrib['requires-certificate-transparency']; /* Boolean */
-            var allows_arbitrary_loads_in_web_content = access.attrib['allows-arbitrary-loads-in-web-content']; /* Boolean */
-            var allows_arbitrary_loads_in_media = access.attrib['allows-arbitrary-loads-in-media']; /* Boolean (DEPRECATED) */
-            var allows_arbitrary_loads_for_media = access.attrib['allows-arbitrary-loads-for-media']; /* Boolean */
-            var allows_local_networking = access.attrib['allows-local-networking']; /* Boolean */
+    getAccesses () {
+        let accesses = this.editor.findAll('./access');
+
+        return accesses.map((access) => {
+            let minimum_tls_version = access.attrib['minimum-tls-version']; /* String */
+            let requires_forward_secrecy = access.attrib['requires-forward-secrecy']; /* Boolean */
+            let requires_certificate_transparency = access.attrib['requires-certificate-transparency']; /* Boolean */
+            let allows_arbitrary_loads_in_web_content = access.attrib['allows-arbitrary-loads-in-web-content']; /* Boolean */
+            let allows_arbitrary_loads_in_media = access.attrib['allows-arbitrary-loads-in-media']; /* Boolean (DEPRECATED) */
+            let allows_arbitrary_loads_for_media = access.attrib['allows-arbitrary-loads-for-media']; /* Boolean */
+            let allows_local_networking = access.attrib['allows-local-networking']; /* Boolean */
 
             return {
-                'origin': access.attrib.origin,
-                'minimum_tls_version': minimum_tls_version,
-                'requires_forward_secrecy': requires_forward_secrecy,
-                'requires_certificate_transparency': requires_certificate_transparency,
-                'allows_arbitrary_loads_in_web_content': allows_arbitrary_loads_in_web_content,
-                'allows_arbitrary_loads_in_media': allows_arbitrary_loads_in_media,
-                'allows_arbitrary_loads_for_media': allows_arbitrary_loads_for_media,
-                'allows_local_networking': allows_local_networking
+                origin: access.attrib.origin,
+                minimum_tls_version: minimum_tls_version,
+                requires_forward_secrecy: requires_forward_secrecy,
+                requires_certificate_transparency: requires_certificate_transparency,
+                allows_arbitrary_loads_in_web_content: allows_arbitrary_loads_in_web_content,
+                allows_arbitrary_loads_in_media: allows_arbitrary_loads_in_media,
+                allows_arbitrary_loads_for_media: allows_arbitrary_loads_for_media,
+                allows_local_networking: allows_local_networking
             };
         });
-    },
+    }
+
     /* Get all the allow-navigation tags */
-    getAllowNavigations: function () {
-        var allow_navigations = this.doc.findall('./allow-navigation');
-        return allow_navigations.map(function (allow_navigation) {
-            var minimum_tls_version = allow_navigation.attrib['minimum-tls-version']; /* String */
-            var requires_forward_secrecy = allow_navigation.attrib['requires-forward-secrecy']; /* Boolean */
-            var requires_certificate_transparency = allow_navigation.attrib['requires-certificate-transparency']; /* Boolean */
+    getAllowNavigations () {
+        let allow_navigations = this.editor.findAll('./allow-navigation');
+
+        return allow_navigations.map((allow_navigation) => {
+            let minimum_tls_version = allow_navigation.attrib['minimum-tls-version']; /* String */
+            let requires_forward_secrecy = allow_navigation.attrib['requires-forward-secrecy']; /* Boolean */
+            let requires_certificate_transparency = allow_navigation.attrib['requires-certificate-transparency']; /* Boolean */
 
             return {
-                'href': allow_navigation.attrib.href,
-                'minimum_tls_version': minimum_tls_version,
-                'requires_forward_secrecy': requires_forward_secrecy,
-                'requires_certificate_transparency': requires_certificate_transparency
+                href: allow_navigation.attrib.href,
+                minimum_tls_version: minimum_tls_version,
+                requires_forward_secrecy: requires_forward_secrecy,
+                requires_certificate_transparency: requires_certificate_transparency
             };
         });
-    },
+    }
+
     /* Get all the allow-intent tags */
-    getAllowIntents: function () {
-        var allow_intents = this.doc.findall('./allow-intent');
-        return allow_intents.map(function (allow_intent) {
+    getAllowIntents () {
+        let allow_intents = this.editor.findAll('./allow-intent');
+
+        return allow_intents.map((allow_intent) => {
             return {
-                'href': allow_intent.attrib.href
+                href: allow_intent.attrib.href
             };
         });
-    },
+    }
+
     /* Get all edit-config tags */
-    getEditConfigs: function (platform) {
-        var platform_edit_configs = this.doc.findall('./platform[@name="' + platform + '"]/edit-config');
-        var edit_configs = this.doc.findall('edit-config').concat(platform_edit_configs);
+    getEditConfigs () {
+        let platform_edit_configs = this.findAllPlatformElement('edit-config');
+        let edit_configs = this.editor.findAll('edit-config').concat(platform_edit_configs);
 
         return edit_configs.map(function (tag) {
-            var editConfig =
-                {
-                    file: tag.attrib['file'],
-                    target: tag.attrib['target'],
-                    mode: tag.attrib['mode'],
-                    id: 'config.xml',
-                    xmls: tag.getchildren()
-                };
+            let editConfig = {
+                file: tag.attrib['file'],
+                target: tag.attrib['target'],
+                mode: tag.attrib['mode'],
+                id: 'config.xml',
+                xmls: tag.getchildren()
+            };
+
             return editConfig;
         });
-    },
+    }
 
     /* Get all config-file tags */
-    getConfigFiles: function (platform) {
-        var platform_config_files = this.doc.findall('./platform[@name="' + platform + '"]/config-file');
-        var config_files = this.doc.findall('config-file').concat(platform_config_files);
+    getConfigFiles () {
+        let platform_config_files = this.findAllPlatformElement('config-file');
+        let config_files = this.editor.findAll('config-file').concat(platform_config_files);
 
         return config_files.map(function (tag) {
-            var configFile =
-                {
-                    target: tag.attrib['target'],
-                    parent: tag.attrib['parent'],
-                    after: tag.attrib['after'],
-                    xmls: tag.getchildren(),
-                    // To support demuxing via versions
-                    versions: tag.attrib['versions'],
-                    deviceTarget: tag.attrib['device-target']
-                };
+            let configFile = {
+                target: tag.attrib['target'],
+                parent: tag.attrib['parent'],
+                after: tag.attrib['after'],
+                xmls: tag.getchildren(),
+                // To support demuxing via versions
+                versions: tag.attrib['versions'],
+                deviceTarget: tag.attrib['device-target']
+            };
+
             return configFile;
         });
-    },
-
-    write: function () {
-        fs.writeFileSync(this.path, this.doc.write({indent: 4}), 'utf-8');
     }
-};
 
-function featureToPlugin (featureElement) {
-    var plugin = {};
-    plugin.variables = [];
-    var pluginVersion,
-        pluginSrc;
+    getCordovaNamespacePrefix () {
+        let rootAtribs = Object.getOwnPropertyNames(this.editor.getDoc().getroot().attrib);
+        let prefix = 'cdv';
 
-    var nodes = featureElement.findall('param');
-    nodes.forEach(function (element) {
-        var n = element.attrib.name;
-        var v = element.attrib.value;
-        if (n === 'id') {
-            plugin.name = v;
-        } else if (n === 'version') {
-            pluginVersion = v;
-        } else if (n === 'url' || n === 'installPath') {
-            pluginSrc = v;
-        } else {
-            plugin.variables[n] = v;
+        for (let j = 0; j < rootAtribs.length; j++) {
+            if (rootAtribs[j].startsWith('xmlns:') && this.editor.getDoc().getroot().attrib[rootAtribs[j]] === 'http://cordova.apache.org/ns/1.0') {
+                let strings = rootAtribs[j].split(':');
+                prefix = strings[1];
+                break;
+            }
         }
-    });
 
-    var spec = pluginSrc || pluginVersion;
-    if (spec) {
-        plugin.spec = spec;
+        return prefix;
     }
 
-    return plugin;
+    featureToPlugin (featureElement) {
+        let plugin = {variables: []};
+        let pluginVersion;
+        let pluginSrc;
+        let nodes = featureElement.findall('param');
+
+        nodes.forEach((element) => {
+            let n = element.attrib.name;
+            let v = element.attrib.value;
+
+            if (n === 'id') {
+                plugin.name = v;
+            } else if (n === 'version') {
+                pluginVersion = v;
+            } else if (n === 'url' || n === 'installPath') {
+                pluginSrc = v;
+            } else {
+                plugin.variables[n] = v;
+            }
+        });
+
+        let spec = pluginSrc || pluginVersion;
+        if (spec) plugin.spec = spec;
+
+        return plugin;
+    }
+
+    write () {
+        this.editor.write();
+    }
 }
+
 module.exports = ConfigParser;
