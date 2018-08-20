@@ -141,6 +141,7 @@ describe('config-changes module', function () {
                 var dummy_xml = new et.ElementTree(et.XML(fs.readFileSync(path.join(dummyplugin, 'plugin.xml'), 'utf-8')));
                 var munger = new configChanges.PlatformMunger('android', temp, 'unused', null, pluginInfoProvider);
                 var munge = munger.generate_plugin_config_munge(pluginInfoProvider.get(dummyplugin), {});
+                console.log(munge);
                 expect(munge.files['AndroidManifest.xml']).toBeDefined();
                 expect(munge.files['AndroidManifest.xml'].parents['/manifest/application']).toBeDefined();
                 xml = (new et.ElementTree(dummy_xml.find('./platform[@name="android"]/config-file[@target="AndroidManifest.xml"]'))).write({xml_declaration: false});

@@ -17,6 +17,7 @@
 
 var rewire = require('rewire');
 var configFile = rewire('../../src/ConfigChanges/ConfigFile');
+var ConfigFile = rewire('../../src/ConfigChanges/ConfigFile');
 var fs = require('fs-extra');
 var path = require('path');
 var projectDir = path.join('project_dir', 'app', 'src', 'main');
@@ -46,9 +47,20 @@ describe('ConfigFile tests', function () {
         expect(function () { configFile.getIOSProjectname('some/project/name'); }).toThrow();
     });
 
-    it('resolveConfigFilePath should return file path', function () {
-        var filePath = path.join('project_dir', 'file');
-        expect(configFile.resolveConfigFilePath('project_dir', 'platform', 'file')).toBe(filePath);
+    fit('resolveConfigFilePath should return file path', function () {
+        // var filePath = path.join('project_dir', 'file.xml');
+
+        // spyOn(ConfigFile, 'fs').and.returnValue(path.join('project_dir', 'file.xml'));
+        spyOn(fs, 'statSync').and.returnValue({mtime: 0});
+        spyOn(fs, 'existsSync').and.returnValue(true);
+
+        const config = new ConfigFile('project_dir', 'platform', 'file.xml');
+
+        // const filepath = config.resolveConfigFilePath('project_dir', 'platform', 'file');
+
+        // console.log(filepath);
+
+        // expect(configFile.resolveConfigFilePath('project_dir', 'platform', 'file')).toBe(filePath);
     });
 
     it('resolveConfigFilePath should return file path', function () {

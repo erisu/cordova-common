@@ -15,8 +15,8 @@
 */
 /* jshint sub:true */
 
-var path = require('path');
-var ConfigFile = require('./ConfigFile');
+const path = require('path');
+const ConfigFile = require('./ConfigFile');
 
 /******************************************************************************
 * ConfigKeeper class
@@ -38,20 +38,20 @@ class ConfigKeeper {
     get (project_dir, platform, file) {
         // This fixes a bug with older plugins - when specifying config xml instead of res/xml/config.xml
         // https://issues.apache.org/jira/browse/CB-6414
-        if (file === 'config.xml' && platform === 'android') {
-            file = 'res/xml/config.xml';
-        }
+        file = file === 'config.xml' ? 'res/xml/config.xml' : file;
 
         const fake_path = path.join(project_dir, platform, file);
 
-        if (this._cached[fake_path]) {
-            return this._cached[fake_path];
+        // File was not cached, need to load.
+        if (!this._cached[fake_path]) {
+            this._cached[fake_path] = this.loadFile(project_dir, platform, file);
         }
 
-        // File was not cached, need to load.
-        this._cached[fake_path] = new ConfigFile(project_dir, platform, file);
-
         return this._cached[fake_path];
+    }
+
+    loadFile (project_dir, platform, file) {
+        return new ConfigFile(project_dir, platform, file);
     }
 
     save_all () {
