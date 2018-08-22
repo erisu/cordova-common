@@ -15,95 +15,124 @@
     under the License.
 */
 
-var rewire = require('rewire');
-var configFile = rewire('../../src/ConfigChanges/ConfigFile');
-var ConfigFile = rewire('../../src/ConfigChanges/ConfigFile');
-var fs = require('fs-extra');
-var path = require('path');
-var projectDir = path.join('project_dir', 'app', 'src', 'main');
+const rewire = require('rewire');
+// const configFile = rewire('../../src/ConfigChanges/ConfigFile');
+const ConfigFile = rewire('../../src/ConfigChanges/ConfigFile');
+const fs = require('fs-extra');
+const path = require('path');
+// const projectDir = path.join('project_dir', 'app', 'src', 'main');
 
-describe('ConfigFile tests', function () {
+describe('ConfigFile', () => {
+    let existsSync;
+    
+    beforeEach(() => {
+        // spyOn(configFile, 'isBinaryPlist').and.callThrough();
 
-    beforeEach(function () {
-        spyOn(configFile, 'isBinaryPlist').and.callThrough();
+        spyOn(fs, 'statSync').and.returnValue({mtime: 0});
+        existsSync = spyOn(fs, 'existsSync');
+        spyOn(fs, 'readFileSync').and.returnValue('<?xml version="1.0" encoding="utf-8"?>');
     });
 
-    it('ConfigFile_save/ConfigFile.prototype.save', function () {
+    it('ConfigFile_save/ConfigFile.prototype.save', () => {
+        existsSync.and.returnValue(true);
+
         spyOn(fs, 'writeFileSync');
-        configFile.prototype.save();
+
+        const config = new ConfigFile('project_dir', 'platform', 'file.xml');
+        config.data.write = jasmine.createSpy('xmlWrite');
+
+        config.save();
+
+        expect(config.data.write).toHaveBeenCalled();
         expect(fs.writeFileSync).toHaveBeenCalled();
     });
 
-    it('isBinaryPlist should return false if not binary', function () {
-        spyOn(fs, 'readFileSync').and.returnValue('not bplist');
-        expect(configFile.isBinaryPlist('someFile')).toBe(false);
-    });
-    it('isBinaryPlist should return true if binary', function () {
-        spyOn(fs, 'readFileSync').and.returnValue('bplist');
-        expect(configFile.isBinaryPlist('someFile')).toBe(true);
-    });
+    // it('isBinaryPlist should return false if not binary', () => {
+    //     spyOn(fs, 'readFileSync').and.returnValue('not bplist');
+    //     expect(configFile.isBinaryPlist('someFile')).toBe(false);
+    // });
+    // it('isBinaryPlist should return true if binary', () => {
+    //     spyOn(fs, 'readFileSync').and.returnValue('bplist');
+    //     expect(configFile.isBinaryPlist('someFile')).toBe(true);
+    // });
 
-    it('getIOSProjectname should throw error', function () {
-        expect(function () { configFile.getIOSProjectname('some/project/name'); }).toThrow();
-    });
+    // it('getIOSProjectname should throw error', () => {
+    //     expect(() => { configFile.getIOSProjectname('some/project/name'); }).toThrow();
+    // });
 
-    fit('resolveConfigFilePath should return file path', function () {
-        // var filePath = path.join('project_dir', 'file.xml');
-
-        // spyOn(ConfigFile, 'fs').and.returnValue(path.join('project_dir', 'file.xml'));
-        spyOn(fs, 'statSync').and.returnValue({mtime: 0});
-        spyOn(fs, 'existsSync').and.returnValue(true);
+    it('resolveConfigFilePath should return file path', () => {
+        existsSync.and.returnValue(true);
 
         const config = new ConfigFile('project_dir', 'platform', 'file.xml');
+        const filePath = path.join('project_dir', 'file.xml');
 
-        // const filepath = config.resolveConfigFilePath('project_dir', 'platform', 'file');
-
-        // console.log(filepath);
-
-        // expect(configFile.resolveConfigFilePath('project_dir', 'platform', 'file')).toBe(filePath);
+        expect(config.resolveConfigFilePath('project_dir', 'platform', 'file.xml')).toBe(filePath);
     });
 
-    it('resolveConfigFilePath should return file path', function () {
-        var androidManifestPath = path.join(projectDir, 'AndroidManifest.xml');
-        expect(configFile.resolveConfigFilePath('project_dir', 'android', 'AndroidManifest.xml')).toBe(androidManifestPath);
+    it('resolveFile should return file path', () => {
+        existsSync.and.returnValue(true);
+
+        const config = new ConfigFile('project_dir', 'platform', 'file.xml');
+        const filePath = path.join('project_dir', 'file.xml');
+
+        expect(config.resolveFile(filePath)).toBe(filePath);
     });
 
-    it('resolveConfigFilePath should return file path', function () {
-        var configPath = path.join(projectDir, 'res', 'xml', 'config.xml');
-        expect(configFile.resolveConfigFilePath('project_dir', 'android', 'config.xml')).toBe(configPath);
+    it('ConfigFile constructor should throw error if resolveFile fail.', () => {
+        existsSync.and.returnValue(false);
+
+        const filePath = path.join('project_dir', 'file.xml');
+
+        expect(() => { 
+            const config = new ConfigFile('project_dir', 'platform', 'file.xml');
+        }).toThrow(new Error(`Unable to find the targeted file ${filePath}`));
     });
 
-    it('resolveConfigFilePath should return file path', function () {
-        var stringsPath = path.join(projectDir, 'res', 'values', 'strings.xml');
-        expect(configFile.resolveConfigFilePath('project_dir', 'android', 'strings.xml')).toBe(stringsPath);
-    });
+    // fit('resolveConfigFilePath should return file path', () => {
+    //     existsSync.and.returnValue(false);
 
-    it('resolveConfigFilePath should return file path', function () {
-        spyOn(configFile, 'getIOSProjectname').and.returnValue('iospath');
-        var configPath = path.join('project_dir', 'iospath', 'config.xml');
-        expect(configFile.resolveConfigFilePath('project_dir', 'ios', 'config.xml')).toBe(configPath);
-    });
+    //     // 'project_dir', 'app', 'src', 'main', AndroidManifest.xml
+    //     const config = new AndroidConfigFile('project_dir', 'android', 'AndroidManifest.xml');
+    //     const androidManifestPath = path.join(projectDir, 'AndroidManifest.xml');
+    //     expect(config.resolveConfigFilePath(projectDir, 'android', 'AndroidManifest.xml')).toBe(androidManifestPath);
+    // });
 
-    it('resolveConfigFilePath should return file path', function () {
-        spyOn(configFile, 'getIOSProjectname').and.returnValue('osxpath');
-        var configPath = path.join('project_dir', 'osxpath', 'config.xml');
-        expect(configFile.resolveConfigFilePath('project_dir', 'osx', 'config.xml')).toBe(configPath);
-    });
+    // it('resolveConfigFilePath should return file path', () => {
+    //     var configPath = path.join(projectDir, 'res', 'xml', 'config.xml');
+    //     expect(configFile.resolveConfigFilePath('project_dir', 'android', 'config.xml')).toBe(configPath);
+    // });
 
-    it('resolveConfigFilePath should return file path', function () {
-        var configPath = path.join('project_dir', 'config.xml');
-        expect(configFile.resolveConfigFilePath('project_dir', 'ubuntu', 'config.xml')).toBe(configPath);
-    });
+    // it('resolveConfigFilePath should return file path', () => {
+    //     var stringsPath = path.join(projectDir, 'res', 'values', 'strings.xml');
+    //     expect(configFile.resolveConfigFilePath('project_dir', 'android', 'strings.xml')).toBe(stringsPath);
+    // });
 
-    it('resolveConfigFilePath should return file path', function () {
-        var file = path.join('res', 'xml');
-        var configPath = path.join('project_dir', 'app', 'src', 'main', file, 'xml');
-        expect(configFile.resolveConfigFilePath('project_dir', 'android', file)).toBe(configPath);
-    });
+    // it('resolveConfigFilePath should return file path', () => {
+    //     spyOn(configFile, 'getIOSProjectname').and.returnValue('iospath');
+    //     var configPath = path.join('project_dir', 'iospath', 'config.xml');
+    //     expect(configFile.resolveConfigFilePath('project_dir', 'ios', 'config.xml')).toBe(configPath);
+    // });
 
-    it('resolveConfigFilePath should return file path', function () {
-        var file = 'res/xml';
-        var configPath = path.join('project_dir', 'app', 'src', 'main', file, 'xml');
-        expect(configFile.resolveConfigFilePath('project_dir', 'android', file)).toBe(configPath);
-    });
+    // it('resolveConfigFilePath should return file path', () => {
+    //     spyOn(configFile, 'getIOSProjectname').and.returnValue('osxpath');
+    //     var configPath = path.join('project_dir', 'osxpath', 'config.xml');
+    //     expect(configFile.resolveConfigFilePath('project_dir', 'osx', 'config.xml')).toBe(configPath);
+    // });
+
+    // it('resolveConfigFilePath should return file path', () => {
+    //     var configPath = path.join('project_dir', 'config.xml');
+    //     expect(configFile.resolveConfigFilePath('project_dir', 'ubuntu', 'config.xml')).toBe(configPath);
+    // });
+
+    // it('resolveConfigFilePath should return file path', () => {
+    //     var file = path.join('res', 'xml');
+    //     var configPath = path.join('project_dir', 'app', 'src', 'main', file, 'xml');
+    //     expect(configFile.resolveConfigFilePath('project_dir', 'android', file)).toBe(configPath);
+    // });
+
+    // it('resolveConfigFilePath should return file path', () => {
+    //     var file = 'res/xml';
+    //     var configPath = path.join('project_dir', 'app', 'src', 'main', file, 'xml');
+    //     expect(configFile.resolveConfigFilePath('project_dir', 'android', file)).toBe(configPath);
+    // });
 });

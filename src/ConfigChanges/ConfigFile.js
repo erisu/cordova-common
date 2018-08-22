@@ -19,16 +19,16 @@
 const fs = require('fs-extra');
 const path = require('path');
 
-var modules = {};
-var addProperty = require('../util/addProperty');
+// var modules = {};
+// var addProperty = require('../util/addProperty');
 
 // Use delay loading to ensure plist and other node modules to not get loaded
 // on Android, Windows platforms
-addProperty(module, 'bplist', 'bplist-parser', modules);
+// addProperty(module, 'bplist', 'bplist-parser', modules);
 // addProperty(module, 'et', 'elementtree', modules);
 // addProperty(module, 'glob', 'glob', modules);
-addProperty(module, 'plist', 'plist', modules);
-addProperty(module, 'plist_helpers', '../util/plist-helpers', modules);
+// addProperty(module, 'plist', 'plist', modules);
+// addProperty(module, 'plist_helpers', '../util/plist-helpers', modules);
 // addProperty(module, 'xml_helpers', '../util/xml-helpers', modules);
 
 const xml_helpers = require('../util/xml-helpers');
@@ -50,28 +50,20 @@ const glob = require('glob');
 ******************************************************************************/
 class ConfigFile {
     constructor (project_dir, platform, file_tag) {
-        console.log(0);
         this.project_dir = project_dir;
-        console.log(1);
+        
         // An actual exisiting file or false when missing.
         this.targetFile = path.normalize(path.join(project_dir, file_tag));
-        console.log(2);
         this.filepath = this.resolveFile(this.targetFile) || false;
-        console.log(3);
-        // this.isLoaded = false;
-
-        // this.platform = platform;
-        // this.file_tag = file_tag;
         this.is_changed = false;
-        console.log(4);
+
         if (!this.filepath) throw new Error(`Unable to find the targeted file ${this.targetFile}`);
-        console.log(5);
+
         // Load file properties
         this.loadFileProperties();
-        console.log(6);
+
         // loads the exisiting file
         this.load();
-        console.log(7);
     }
 
     /**
