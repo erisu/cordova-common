@@ -343,8 +343,9 @@ function is_conflicting (editchanges, config_munge, self, force) {
 
             // Check if the edit target will resolve to an existing target
             if (!target || target.length === 0) {
-                var file_xml = self.config_keeper.get(self.project_dir, self.platform, editchange.file).data;
-                var resolveEditTarget = xml_helpers.resolveParent(file_xml, editchange.target);
+                var file = self.config_keeper.get(self.project_dir, self.platform, editchange.file);
+                var file_xml = file.data;
+                var resolveEditTarget = file.type === 'xml' ? xml_helpers.resolveParent(file_xml, editchange.target) : null;
                 var resolveTarget;
 
                 if (resolveEditTarget) {
