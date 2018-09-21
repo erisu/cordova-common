@@ -292,24 +292,20 @@ describe('config.xml parser', () => {
         });
 
         describe('static resources', () => {
-            const hasPlatformPropertyDefined = e => !!e.platform;
-            const hasSrcPropertyDefined = e => !!e.src;
-            const hasTargetPropertyDefined = e => !!e.target;
-            const hasDensityPropertyDefined = e => !!e.density;
             const hasPlatformPropertyUndefined = e => !e.platform;
 
             it('Test 035 : should fetch shared resources if platform parameter is not specified', () => {
-                expect(config.getStaticResources(null, 'icon').length).toBe(2);
-                expect(config.getStaticResources(null, 'icon').every(hasPlatformPropertyUndefined)).toBeTruthy();
+                expect(config.getStaticResources('icon').length).toBe(2);
+                expect(config.getStaticResources('icon').every(hasPlatformPropertyUndefined)).toBeTruthy();
             });
 
             it('Test 038 : should have getDefault method to fetch default resources property', () => {
-                expect(config.getStaticResources(null, 'icon').getDefault()).toBeDefined();
-                expect(config.getStaticResources(null, 'icon').getDefault().src).toBe('icon.png');
+                expect(config.getStaticResources('icon').getDefault()).toBeDefined();
+                expect(config.getStaticResources('icon').getDefault().src).toBe('icon.png');
             });
 
             it('Test 039 : should have getDefault method returning defaultResource property', () => {
-                expect(config.getStaticResources(null, 'icon').getDefault()).toEqual(config.getStaticResources(null, 'icon').getDefault());
+                expect(config.getStaticResources('icon').getDefault()).toEqual(config.getStaticResources('icon').getDefault());
             });
         });
     });
