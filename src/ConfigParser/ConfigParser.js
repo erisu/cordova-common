@@ -352,22 +352,17 @@ class ConfigParser {
 
     /**
      * Returns all resources for the platform specified.
-     * @param  {String} platform     The platform.
      * @param {string}  resourceName Type of static resources to return.
      *                               "icon" and "splash" currently supported.
      * @returns {Array}               Resources for the platform specified.
      */
-    getStaticResources (platform, resourceName) {
+    getStaticResources (resourceName) {
         let staticResources = [];
 
-        if (platform) { // platform specific icons
-            events.emit('log', 'The platform argument for getStaticResources has been deprecated. getStaticResources will use globally defined platform.');
-
-            this.findAllPlatformElement(resourceName).forEach((element) => {
-                element.platform = this.platform; // mark as platform specific resource
-                staticResources.push(element);
-            });
-        }
+        this.findAllPlatformElement(resourceName).forEach((element) => {
+            element.platform = this.platform; // mark as platform specific resource
+            staticResources.push(element);
+        });
 
         // root level resources
         staticResources = staticResources.concat(this.editor.findAll(resourceName));
@@ -408,17 +403,16 @@ class ConfigParser {
      * @param  {string} platform Platform name
      * @returns {Resource[]}      Array of icon objects.
      */
-    getIcons (platform) {
-        return this.getStaticResources(platform, 'icon');
+    getIcons () {
+        return this.getStaticResources('icon');
     }
 
     /**
      * Returns all splash images for specific platform.
-     * @param  {string} platform Platform name
      * @returns {Resource[]}      Array of Splash objects.
      */
-    getSplashScreens (platform) {
-        return this.getStaticResources(platform, 'splash');
+    getSplashScreens () {
+        return this.getStaticResources('splash');
     }
 
     /**
