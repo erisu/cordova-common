@@ -97,21 +97,21 @@ describe('config.xml parser', () => {
                 expect(config.getPreference('fullscreen')).toEqual('true');
             });
             it('should allow setting the preference', function () {
-                cfg.setPreference('orientation', 'landscape');
-                expect(cfg.getPreference('orientation')).toEqual('landscape');
+                config.setPreference('orientation', 'landscape');
+                expect(config.getPreference('orientation')).toEqual('landscape');
             });
             it('should allow setting the platform specific preference', function () {
-                cfg.setPreference('android-minSdkVersion', 'android', '11');
-                expect(cfg.getPreference('android-minSdkVersion', 'android')).toEqual('11');
+                config.setPreference('android-minSdkVersion', 'android', '11');
+                expect(config.getPreference('android-minSdkVersion', 'android')).toEqual('11');
             });
         });
         describe('global preference', function () {
             it('Test 013 : should return the value of a global preference', function () {
-                expect(cfg.getGlobalPreference('orientation')).toEqual('portrait');
+                expect(config.getGlobalPreference('orientation')).toEqual('portrait');
             });
             it('Test 014 : should return an empty string for a non-existing preference', function () {
-                expect(cfg.getGlobalPreference('foobar')).toEqual('');
-
+                expect(config.getGlobalPreference('foobar')).toEqual('');
+            });
             it('Test 012 : should return an empty string for a non-existing preference', () => {
                 expect(config.getPreference('zimzooo!')).toEqual('');
             });
@@ -130,11 +130,11 @@ describe('config.xml parser', () => {
                 expect(config.getPreference('orientation', 'foobar')).toEqual('');
             });
             it('should allow setting the platform specific preference', function () {
-                cfg.setPlatformPreference('orientation', 'android', 'foobar');
-                expect(cfg.getPlatformPreference('orientation', 'android')).toEqual('foobar');
+                config.setPlatformPreference('orientation', 'android', 'foobar');
+                expect(config.getPlatformPreference('orientation', 'android')).toEqual('foobar');
             });
             it('should throw when setting a preference for unsupported platform', function () {
-                expect(function () { cfg.setPlatformPreference('orientation', 'foobar', 'landscape'); }).toThrow();
+                expect(function () { config.setPlatformPreference('orientation', 'foobar', 'landscape'); }).toThrow();
             });
         });
 
@@ -201,7 +201,7 @@ describe('config.xml parser', () => {
             });
 
             it('Test 025 : should allow adding a new plugin', () => {
-                config.addPlugin({name: 'myplugin'});
+                config.addPlugin({ name: 'myplugin' });
 
                 const plugins = config.doc.findall('plugin');
                 const pluginNames = plugins.map(plugin => plugin.attrib.name);
@@ -210,10 +210,10 @@ describe('config.xml parser', () => {
             });
 
             it('Test 026 : should allow adding features with params', () => {
-                config.addPlugin({name: 'aplugin'}, [{name: 'paraname', value: 'paravalue'}]);
+                config.addPlugin({ name: 'aplugin' }, [{ name: 'paraname', value: 'paravalue' }]);
 
                 // Additional check for new parameters syntax
-                config.addPlugin({name: 'bplugin'}, {paraname: 'paravalue'});
+                config.addPlugin({ name: 'bplugin' }, { paraname: 'paravalue' });
 
                 const plugins = config.doc.findall('plugin')
                     .filter(plugin => plugin.attrib.name === 'aplugin' || plugin.attrib.name === 'bplugin');

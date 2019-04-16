@@ -88,7 +88,7 @@ class ConfigFile {
 
     save () {
         if (this.type === 'xml') {
-            fs.writeFileSync(this.filepath, this.data.write({indent: 4}), 'utf-8');
+            fs.writeFileSync(this.filepath, this.data.write({ indent: 4 }), 'utf-8');
         } else {
             // plist
             var regExp = new RegExp('<string>[ \t\r\n]+?</string>', 'g');

@@ -144,7 +144,7 @@ class DocumentEditor {
      * writes document to config.xml path.
      */
     write () {
-        fs.writeFileSync(this.path, this.doc.write({indent: 4}), 'utf-8');
+        fs.writeFileSync(this.path, this.doc.write({ indent: 4 }), 'utf-8');
     }
 }
 
@@ -286,7 +286,7 @@ class ConfigParser {
         }
 
         pref.attrib.value = value;
-        
+
         return this;
     }
 
@@ -520,7 +520,7 @@ class ConfigParser {
         if (variables && typeof variables === 'object' && !Array.isArray(variables)) {
             variables = Object.keys(variables)
                 .map((variableName) => {
-                    return {name: variableName, value: variables[variableName]};
+                    return { name: variableName, value: variables[variableName] };
                 });
         }
 
@@ -753,7 +753,7 @@ class ConfigParser {
     }
 
     featureToPlugin (featureElement) {
-        let plugin = {variables: []};
+        let plugin = { variables: [] };
         let pluginVersion;
         let pluginSrc;
         let nodes = featureElement.findall('param');
