@@ -299,20 +299,21 @@ class ConfigParser {
     }
 
     setPlatformPreference (name, platform, value) {
-        const platformEl = this.doc.find('./platform[@name="' + platform + '"]');
+        const platformEl = this.doc.find(`./platform[@name="${platform}"]`);
+
         if (!platformEl) {
             throw new CordovaError('platform does not exist (received platform: ' + platform + ')');
         }
-        const elems = this.doc.findall('./platform[@name="' + platform + '"]/preference');
-        let pref = elems.filter(function (elem) {
-            return elem.attrib.name.toLowerCase() === name.toLowerCase();
-        }).pop();
+
+        const elems = this.findAllPlatformElement('preference');
+        let pref = elems.filter((elem) => elem.attrib.name.toLowerCase() === name.toLowerCase()).pop();
 
         if (!pref) {
             pref = new et.Element('preference');
             pref.attrib.name = name;
             platformEl.append(pref);
         }
+
         pref.attrib.value = value;
     }
 
@@ -481,9 +482,7 @@ class ConfigParser {
     * @returns {string[]} Array of plugin IDs
     */
     getPluginIdList () {
-        let plugins = this.editor.findAll('plugin').map(function (plugin) {
-            return plugin.attrib.name;
-        });
+        let plugins = this.editor.findAll('plugin').map(plugin => plugin.attrib.name);
 
         this.editor.findAll('feature').forEach(function (element) {
             let idTag = element.find('./param[@name="id"]');
@@ -492,6 +491,7 @@ class ConfigParser {
                 plugins.push(idTag.attrib.value);
             }
         });
+
         return plugins;
     }
 
@@ -519,9 +519,7 @@ class ConfigParser {
         // support arbitrary object as variables source
         if (variables && typeof variables === 'object' && !Array.isArray(variables)) {
             variables = Object.keys(variables)
-                .map((variableName) => {
-                    return { name: variableName, value: variables[variableName] };
-                });
+                .map(variableName => ({ name: variableName, value: variables[variableName] }));
         }
 
         if (variables) {
@@ -631,110 +629,70 @@ class ConfigParser {
     }
 
     getEngines () {
-        let engines = this.editor.findAll('./engine');
-
-        return engines.map(function (engine) {
-            let spec = engine.attrib.spec || engine.attrib.version;
-
-            return {
-                name: engine.attrib.name,
-                spec: spec || null
-            };
-        });
+        return this.editor.findAll('./engine').map(engine => ({
+            name: engine.attrib.name,
+            spec: (engine.attrib.spec || engine.attrib.version) || null
+        }));
     }
 
     /* Get all the access tags */
     getAccesses () {
-        let accesses = this.editor.findAll('./access');
-
-        return accesses.map((access) => {
-            let minimum_tls_version = access.attrib['minimum-tls-version']; /* String */
-            let requires_forward_secrecy = access.attrib['requires-forward-secrecy']; /* Boolean */
-            let requires_certificate_transparency = access.attrib['requires-certificate-transparency']; /* Boolean */
-            let allows_arbitrary_loads_in_web_content = access.attrib['allows-arbitrary-loads-in-web-content']; /* Boolean */
-            let allows_arbitrary_loads_in_media = access.attrib['allows-arbitrary-loads-in-media']; /* Boolean (DEPRECATED) */
-            let allows_arbitrary_loads_for_media = access.attrib['allows-arbitrary-loads-for-media']; /* Boolean */
-            let allows_local_networking = access.attrib['allows-local-networking']; /* Boolean */
-
-            return {
-                origin: access.attrib.origin,
-                minimum_tls_version: minimum_tls_version,
-                requires_forward_secrecy: requires_forward_secrecy,
-                requires_certificate_transparency: requires_certificate_transparency,
-                allows_arbitrary_loads_in_web_content: allows_arbitrary_loads_in_web_content,
-                allows_arbitrary_loads_in_media: allows_arbitrary_loads_in_media,
-                allows_arbitrary_loads_for_media: allows_arbitrary_loads_for_media,
-                allows_local_networking: allows_local_networking
-            };
-        });
+        return this.editor.findAll('./access').map(access => ({
+            origin: access.attrib.origin,
+            minimum_tls_version: access.attrib['minimum-tls-version'], /* String */
+            requires_forward_secrecy: access.attrib['requires-forward-secrecy'], /* Boolean */
+            requires_certificate_transparency: access.attrib['requires-certificate-transparency'], /* Boolean */
+            allows_arbitrary_loads_in_web_content: access.attrib['allows-arbitrary-loads-in-web-content'], /* Boolean */
+            allows_arbitrary_loads_in_media: access.attrib['allows-arbitrary-loads-in-media'], /* Boolean (DEPRECATED) */
+            allows_arbitrary_loads_for_media: access.attrib['allows-arbitrary-loads-for-media'], /* Boolean */
+            allows_local_networking: access.attrib['allows-local-networking'] /* Boolean */
+        }));
     }
 
     /* Get all the allow-navigation tags */
     getAllowNavigations () {
-        let allow_navigations = this.editor.findAll('./allow-navigation');
-
-        return allow_navigations.map((allow_navigation) => {
-            let minimum_tls_version = allow_navigation.attrib['minimum-tls-version']; /* String */
-            let requires_forward_secrecy = allow_navigation.attrib['requires-forward-secrecy']; /* Boolean */
-            let requires_certificate_transparency = allow_navigation.attrib['requires-certificate-transparency']; /* Boolean */
-
-            return {
-                href: allow_navigation.attrib.href,
-                minimum_tls_version: minimum_tls_version,
-                requires_forward_secrecy: requires_forward_secrecy,
-                requires_certificate_transparency: requires_certificate_transparency
-            };
-        });
+        return this.editor.findAll('./allow-navigation').map(allow_navigation => ({
+            href: allow_navigation.attrib.href,
+            minimum_tls_version: allow_navigation.attrib['minimum-tls-version'], /* String */
+            requires_forward_secrecy: allow_navigation.attrib['requires-forward-secrecy'], /* Boolean */
+            requires_certificate_transparency: allow_navigation.attrib['requires-certificate-transparency'] /* Boolean */
+        }));
     }
 
     /* Get all the allow-intent tags */
     getAllowIntents () {
-        let allow_intents = this.editor.findAll('./allow-intent');
-
-        return allow_intents.map((allow_intent) => {
-            return {
-                href: allow_intent.attrib.href
-            };
-        });
+        return this.editor.findAll('./allow-intent').map(allow_intent => ({
+            href: allow_intent.attrib.href
+        }));
     }
 
     /* Get all edit-config tags */
     getEditConfigs () {
-        let platform_edit_configs = this.findAllPlatformElement('edit-config');
-        let edit_configs = this.editor.findAll('edit-config').concat(platform_edit_configs);
-
-        return edit_configs.map(function (tag) {
-            let editConfig = {
-                file: tag.attrib['file'],
-                target: tag.attrib['target'],
-                mode: tag.attrib['mode'],
+        return this.editor.findAll('edit-config')
+            .concat(this.findAllPlatformElement('edit-config'))
+            .map(tag => ({
+                file: tag.attrib.file,
+                target: tag.attrib.target,
+                mode: tag.attrib.mode,
                 id: 'config.xml',
                 xmls: tag.getchildren()
-            };
-
-            return editConfig;
-        });
+            }));
     }
 
     /* Get all config-file tags */
     getConfigFiles () {
-        let platform_config_files = this.findAllPlatformElement('config-file');
-        let config_files = this.editor.findAll('config-file').concat(platform_config_files);
-
-        return config_files.map(function (tag) {
-            let configFile = {
-                target: tag.attrib['target'],
-                parent: tag.attrib['parent'],
-                after: tag.attrib['after'],
+        return this.editor.findAll('config-file')
+            .concat(this.findAllPlatformElement('config-file'))
+            .map(tag => ({
+                target: tag.attrib.target,
+                parent: tag.attrib.parent,
+                after: tag.attrib.after,
                 xmls: tag.getchildren(),
                 // To support demuxing via versions
-                versions: tag.attrib['versions'],
+                versions: tag.attrib.versions,
                 deviceTarget: tag.attrib['device-target'],
                 id: 'config.xml'
-            };
-
-            return configFile;
-        });
+            }));
     }
 
     getCordovaNamespacePrefix () {

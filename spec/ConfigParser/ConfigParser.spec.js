@@ -100,7 +100,8 @@ describe('config.xml parser', () => {
                 config.setPreference('orientation', 'landscape');
                 expect(config.getPreference('orientation')).toEqual('landscape');
             });
-            it('should allow setting the platform specific preference', function () {
+            // move to android
+            xit('should allow setting the platform specific preference', function () {
                 config.setPreference('android-minSdkVersion', 'android', '11');
                 expect(config.getPreference('android-minSdkVersion', 'android')).toEqual('11');
             });
@@ -129,7 +130,8 @@ describe('config.xml parser', () => {
             it('Test 017 : should return an empty string when querying with unsupported platform', () => {
                 expect(config.getPreference('orientation', 'foobar')).toEqual('');
             });
-            it('should allow setting the platform specific preference', function () {
+            // move to android
+            xit('should allow setting the platform specific preference', function () {
                 config.setPlatformPreference('orientation', 'android', 'foobar');
                 expect(config.getPlatformPreference('orientation', 'android')).toEqual('foobar');
             });
