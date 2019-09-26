@@ -61,95 +61,96 @@ exports.spawn = function (cmd, args, opts) {
     args = args || [];
     opts = opts || {};
     var spawnOpts = {};
+
     var d = Q.defer();
 
-    if (opts.stdio !== 'default') {
-        // Ignore 'default' value for stdio because it corresponds to child_process's default 'pipe' option
-        spawnOpts.stdio = opts.stdio;
-    }
-
-    if (opts.cwd) {
-        spawnOpts.cwd = opts.cwd;
-    }
-
-    if (opts.env) {
-        spawnOpts.env = _.extend(_.extend({}, process.env), opts.env);
-    }
-
-    if (opts.chmod && !iswin32) {
+    return new Promise((resolve, reject) => {
+        if (opts.stdio !== 'default') {
+            // Ignore 'default' value for stdio because it corresponds to child_process's default 'pipe' option
+            spawnOpts.stdio = opts.stdio;
+        }
+    
+        if (opts.cwd) {
+            spawnOpts.cwd = opts.cwd;
+        }
+    
+        if (opts.env) {
+            spawnOpts.env = _.extend(_.extend({}, process.env), opts.env);
+        }
+    
+        if (opts.chmod && !iswin32) {
+            try {
+                // This fails when module is installed in a system directory (e.g. via sudo npm install)
+                fs.chmodSync(cmd, '755');
+            } catch (e) {
+                // If the perms weren't set right, then this will come as an error upon execution.
+            }
+        }
+    
+        events.emit(opts.printCommand ? 'log' : 'verbose', 'Running command: ' + cmd + ' ' + args.join(' '));
+    
+        // At least until Node.js 8, child_process.spawn will throw exceptions
+        // instead of emitting error events in certain cases (like EACCES), Thus we
+        // have to wrap the execution in try/catch to convert them into rejections.
         try {
-            // This fails when module is installed in a system directory (e.g. via sudo npm install)
-            fs.chmodSync(cmd, '755');
+            var child = crossSpawn.spawn(cmd, args, spawnOpts);
         } catch (e) {
-            // If the perms weren't set right, then this will come as an error upon execution.
+            whenDone(e);
+            return d.promise;
         }
-    }
-
-    events.emit(opts.printCommand ? 'log' : 'verbose', 'Running command: ' + cmd + ' ' + args.join(' '));
-
-    // At least until Node.js 8, child_process.spawn will throw exceptions
-    // instead of emitting error events in certain cases (like EACCES), Thus we
-    // have to wrap the execution in try/catch to convert them into rejections.
-    try {
-        var child = crossSpawn.spawn(cmd, args, spawnOpts);
-    } catch (e) {
-        whenDone(e);
-        return d.promise;
-    }
-    var capturedOut = '';
-    var capturedErr = '';
-
-    if (child.stdout) {
-        child.stdout.setEncoding('utf8');
-        child.stdout.on('data', function (data) {
-            capturedOut += data;
-            d.notify({ stdout: data });
-        });
-    }
-
-    if (child.stderr) {
-        child.stderr.setEncoding('utf8');
-        child.stderr.on('data', function (data) {
-            capturedErr += data;
-            d.notify({ stderr: data });
-        });
-    }
-
-    child.on('close', whenDone);
-    child.on('error', whenDone);
-    function whenDone (arg) {
-        if (child) {
-            child.removeListener('close', whenDone);
-            child.removeListener('error', whenDone);
+        var capturedOut = '';
+        var capturedErr = '';
+    
+        if (child.stdout) {
+            child.stdout.setEncoding('utf8');
+            child.stdout.on('data', function (data) {
+                capturedOut += data;
+                d.notify({ stdout: data });
+            });
         }
-        var code = typeof arg === 'number' ? arg : arg && arg.code;
-
-        events.emit('verbose', 'Command finished with error code ' + code + ': ' + cmd + ' ' + args);
-        if (code === 0) {
-            d.resolve(capturedOut.trim());
-        } else {
-            var errMsg = cmd + ': Command failed with exit code ' + code;
-            if (capturedErr) {
-                errMsg += ' Error output:\n' + capturedErr.trim();
-            }
-            var err = new Error(errMsg);
-            if (capturedErr) {
-                err.stderr = capturedErr;
-            }
-            if (capturedOut) {
-                err.stdout = capturedOut;
-            }
-            err.code = code;
-            d.reject(err);
+    
+        if (child.stderr) {
+            child.stderr.setEncoding('utf8');
+            child.stderr.on('data', function (data) {
+                capturedErr += data;
+                d.notify({ stderr: data });
+            });
         }
-    }
-
-    return d.promise;
+    
+        child.on('close', whenDone);
+        child.on('error', whenDone);
+        function whenDone (arg) {
+            if (child) {
+                child.removeListener('close', whenDone);
+                child.removeListener('error', whenDone);
+            }
+            var code = typeof arg === 'number' ? arg : arg && arg.code;
+    
+            events.emit('verbose', 'Command finished with error code ' + code + ': ' + cmd + ' ' + args);
+            if (code === 0) {
+                resolve(capturedOut.trim());
+            } else {
+                var errMsg = cmd + ': Command failed with exit code ' + code;
+                if (capturedErr) {
+                    errMsg += ' Error output:\n' + capturedErr.trim();
+                }
+                var err = new Error(errMsg);
+                if (capturedErr) {
+                    err.stderr = capturedErr;
+                }
+                if (capturedOut) {
+                    err.stdout = capturedOut;
+                }
+                err.code = code;
+                reject(err);
+            }
+        }
+    });
 };
 
 exports.maybeSpawn = function (cmd, args, opts) {
     if (fs.existsSync(cmd)) {
         return exports.spawn(cmd, args, opts);
     }
-    return Q(null);
+    return Promise.resolve(null);
 };
