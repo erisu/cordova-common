@@ -22,7 +22,6 @@ var addProperty = require('./src/util/addProperty');
 module.exports = { };
 
 addProperty(module, 'events', './src/events');
-addProperty(module, 'superspawn', './src/superspawn');
 
 addProperty(module, 'ActionStack', './src/ActionStack');
 addProperty(module, 'CordovaError', './src/CordovaError/CordovaError');
