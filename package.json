@@ -19,7 +19,7 @@
   "scripts": {
     "test": "npm run eslint && npm run jasmine",
     "eslint": "eslint src spec cordova-common.js",
-    "jasmine": "jasmine JASMINE_CONFIG_PATH=spec/support/jasmine.json",
+    "jasmine": "jasmine --config=spec/support/jasmine.json",
     "cover": "nyc npm run jasmine"
   },
   "dependencies": {
@@ -43,7 +43,7 @@
     "eslint-plugin-node": "^10.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
-    "jasmine": "^3.4.0",
+    "jasmine": "^3.5.0",
     "jasmine-spec-reporter": "^4.2.1",
     "nyc": "^14.1.1",
     "osenv": "^0.1.3",
