@@ -17,10 +17,10 @@
     "node": ">=10.0.0"
   },
   "scripts": {
-    "test": "npm run eslint && npm run jasmine",
     "eslint": "eslint src spec cordova-common.js",
-    "jasmine": "jasmine --config=spec/support/jasmine.json",
-    "cover": "nyc npm run jasmine"
+    "test": "npm run eslint && npm run test:coverage",
+    "test:unit": "jasmine --config=spec/support/jasmine.json",
+    "test:coverage": "nyc npm run test:unit"
   },
   "dependencies": {
     "ansi": "^0.3.1",
