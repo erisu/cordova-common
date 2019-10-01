@@ -102,7 +102,8 @@ function PluginInfo (dirname) {
 
     function _parseDependency (tag) {
         var dep =
-            { id: tag.attrib.id,
+            {
+                id: tag.attrib.id,
                 version: tag.attrib.version || '',
                 url: tag.attrib.url || '',
                 subdir: tag.attrib.subdir || '',
@@ -130,12 +131,13 @@ function PluginInfo (dirname) {
 
     function _parseConfigFile (tag) {
         var configFile =
-            { target: tag.attrib['target'],
-                parent: tag.attrib['parent'],
-                after: tag.attrib['after'],
+            {
+                target: tag.attrib.target,
+                parent: tag.attrib.parent,
+                after: tag.attrib.after,
                 xmls: tag.getchildren(),
                 // To support demuxing via versions
-                versions: tag.attrib['versions'],
+                versions: tag.attrib.versions,
                 deviceTarget: tag.attrib['device-target']
             };
         return configFile;
@@ -149,9 +151,10 @@ function PluginInfo (dirname) {
 
     function _parseEditConfigs (tag) {
         var editConfig =
-            { file: tag.attrib['file'],
-                target: tag.attrib['target'],
-                mode: tag.attrib['mode'],
+            {
+                file: tag.attrib.file,
+                target: tag.attrib.target,
+                mode: tag.attrib.mode,
                 xmls: tag.getchildren()
             };
         return editConfig;
@@ -203,7 +206,7 @@ function PluginInfo (dirname) {
                 itemType: 'header-file',
                 src: tag.attrib.src,
                 targetDir: tag.attrib['target-dir'],
-                type: tag.attrib['type']
+                type: tag.attrib.type
             };
         });
         return headerFiles;

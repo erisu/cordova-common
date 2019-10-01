@@ -43,4 +43,3 @@ addProperty(module, 'ConfigFile', './src/ConfigChanges/ConfigFile');
 addProperty(module, 'mungeUtil', './src/ConfigChanges/munge-util');
 
 addProperty(module, 'xmlHelpers', './src/util/xml-helpers');
-
