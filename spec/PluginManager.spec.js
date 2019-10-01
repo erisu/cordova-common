@@ -20,7 +20,6 @@
 // Promise-matchers do not work with jasmine 2.0.
 // require('promise-matchers');
 
-var Q = require('q');
 var fs = require('fs-extra');
 var path = require('path');
 var rewire = require('rewire');
@@ -63,7 +62,7 @@ describe('PluginManager class', function () {
             FAKE_PROJECT = jasmine.createSpyObj('project', ['getInstaller', 'getUninstaller', 'write']);
             manager = new PluginManager('windows', FAKE_LOCATIONS, FAKE_PROJECT);
             actions = jasmine.createSpyObj('actions', ['createAction', 'push', 'process']);
-            actions.process.and.returnValue(Q.resolve());
+            actions.process.and.returnValue(Promise.resolve());
             PluginManager.__set__('ActionStack', function () { return actions; });
         });
 

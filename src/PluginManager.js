@@ -17,7 +17,6 @@
        under the License.
 */
 
-var Q = require('q');
 var fs = require('fs-extra');
 var path = require('path');
 
@@ -81,9 +80,9 @@ module.exports = PluginManager;
  * @returns {Promise} Returns a Q promise, either resolved in case of success, rejected otherwise.
  */
 PluginManager.prototype.doOperation = function (operation, plugin, options) {
-    if (operation !== PluginManager.INSTALL && operation !== PluginManager.UNINSTALL) { return Q.reject(new CordovaError('The parameter is incorrect. The opeation must be either "add" or "remove"')); }
+    if (operation !== PluginManager.INSTALL && operation !== PluginManager.UNINSTALL) { return Promise.reject(new CordovaError('The parameter is incorrect. The opeation must be either "add" or "remove"')); }
 
-    if (!plugin || plugin.constructor.name !== 'PluginInfo') { return Q.reject(new CordovaError('The parameter is incorrect. The first parameter should be a PluginInfo instance')); }
+    if (!plugin || plugin.constructor.name !== 'PluginInfo') { return Promise.reject(new CordovaError('The parameter is incorrect. The first parameter should be a PluginInfo instance')); }
 
     // Set default to empty object to play safe when accesing properties
     options = options || {};
