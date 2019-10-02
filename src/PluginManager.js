@@ -77,7 +77,7 @@ module.exports = PluginManager;
  * @param {Object} [options={}] An installation options. It is expected but is not necessary
  *   that options would contain 'variables' inner object with 'PACKAGE_NAME' field set by caller.
  *
- * @returns {Promise} Returns a Q promise, either resolved in case of success, rejected otherwise.
+ * @returns {Promise} Returns a promise, either resolved in case of success, rejected otherwise.
  */
 PluginManager.prototype.doOperation = function (operation, plugin, options) {
     if (operation !== PluginManager.INSTALL && operation !== PluginManager.UNINSTALL) { return Promise.reject(new CordovaError('The parameter is incorrect. The opeation must be either "add" or "remove"')); }
