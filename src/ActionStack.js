@@ -19,15 +19,15 @@
 
 /* jshint quotmark:false */
 
-var events = require('./events');
+const events = require('./events');
 
-function ActionStack () {
-    this.stack = [];
-    this.completed = [];
-}
+class ActionStack {
+    constructor () {
+        this.stack = [];
+        this.completed = [];
+    }
 
-ActionStack.prototype = {
-    createAction: function (handler, action_params, reverter, revert_params) {
+    createAction (handler, action_params, reverter, revert_params) {
         return {
             handler: {
                 run: handler,
@@ -38,30 +38,33 @@ ActionStack.prototype = {
                 params: revert_params
             }
         };
-    },
-    push: function (tx) {
+    }
+
+    push (tx) {
         this.stack.push(tx);
-    },
+    }
+
     // Returns a promise.
-    process: function (platform) {
+    process (platform) {
         events.emit('verbose', 'Beginning processing of action stack for ' + platform + ' project...');
 
         while (this.stack.length) {
-            var action = this.stack.shift();
-            var handler = action.handler.run;
-            var action_params = action.handler.params;
+            const action = this.stack.shift();
+            const handler = action.handler.run;
 
             try {
-                handler.apply(null, action_params);
+                handler.apply(null, action.handler.params);
             } catch (e) {
                 events.emit('warn', 'Error during processing of action! Attempting to revert...');
                 this.stack.unshift(action);
-                var issue = 'Uh oh!\n';
+
+                let issue = 'Uh oh!\n';
+
                 // revert completed tasks
                 while (this.completed.length) {
-                    var undo = this.completed.shift();
-                    var revert = undo.reverter.run;
-                    var revert_params = undo.reverter.params;
+                    const undo = this.completed.shift();
+                    const revert = undo.reverter.run;
+                    const revert_params = undo.reverter.params;
 
                     try {
                         revert.apply(null, revert_params);
@@ -70,15 +73,19 @@ ActionStack.prototype = {
                         issue += 'A reversion action failed: ' + err.message + '\n';
                     }
                 }
+
+                // Update error message
                 e.message = issue + e.message;
+
                 return Promise.reject(e);
             }
+
             this.completed.push(action);
         }
-        events.emit('verbose', 'Action stack processing complete.');
 
+        events.emit('verbose', 'Action stack processing complete.');
         return Promise.resolve();
     }
-};
+}
 
 module.exports = ActionStack;
