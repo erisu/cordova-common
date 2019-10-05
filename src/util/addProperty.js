@@ -23,7 +23,7 @@ module.exports = function addProperty (module, property, modulePath, obj) {
     Object.defineProperty(obj, property, {
         configurable: true,
         get: function () {
-            var delayLoadedModule = module.require(modulePath);
+            const delayLoadedModule = module.require(modulePath);
             obj[property] = delayLoadedModule;
             return delayLoadedModule;
         }
