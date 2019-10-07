@@ -17,65 +17,71 @@
     under the License.
 */
 
-/* jshint sub:true, laxcomma:true, laxbreak:true */
+const fs = require('fs-extra');
+const path = require('path');
+const PluginInfo = require('./PluginInfo');
+const events = require('../events');
 
-var fs = require('fs-extra');
-var path = require('path');
-var PluginInfo = require('./PluginInfo');
-var events = require('../events');
+class PluginInfoProvider {
+    constructor () {
+        this._cache = {};
+        this._getAllCache = {};
+    }
 
-function PluginInfoProvider () {
-    this._cache = {};
-    this._getAllCache = {};
+    get (dirName) {
+        const absPath = path.resolve(dirName);
+
+        if (!this._cache[absPath]) {
+            this._cache[absPath] = new PluginInfo(dirName);
+        }
+
+        return this._cache[absPath];
+    }
+
+    // Normally you don't need to put() entries, but it's used
+    // when copying plugins, and in unit tests.
+    put (pluginInfo) {
+        const absPath = path.resolve(pluginInfo.dir);
+        this._cache[absPath] = pluginInfo;
+    }
+
+    // Used for plugin search path processing.
+    // Given a dir containing multiple plugins, create a PluginInfo object for
+    // each of them and return as array.
+    // Should load them all in parallel and return a promise, but not yet.
+    getAllWithinSearchPath (dirName) {
+        const absPath = path.resolve(dirName);
+
+        if (!this._getAllCache[absPath]) {
+            this._getAllCache[absPath] = getAllHelper(absPath, this);
+        }
+
+        return this._getAllCache[absPath];
+    }
 }
 
-PluginInfoProvider.prototype.get = function (dirName) {
-    var absPath = path.resolve(dirName);
-    if (!this._cache[absPath]) {
-        this._cache[absPath] = new PluginInfo(dirName);
-    }
-    return this._cache[absPath];
-};
-
-// Normally you don't need to put() entries, but it's used
-// when copying plugins, and in unit tests.
-PluginInfoProvider.prototype.put = function (pluginInfo) {
-    var absPath = path.resolve(pluginInfo.dir);
-    this._cache[absPath] = pluginInfo;
-};
-
-// Used for plugin search path processing.
-// Given a dir containing multiple plugins, create a PluginInfo object for
-// each of them and return as array.
-// Should load them all in parallel and return a promise, but not yet.
-PluginInfoProvider.prototype.getAllWithinSearchPath = function (dirName) {
-    var absPath = path.resolve(dirName);
-    if (!this._getAllCache[absPath]) {
-        this._getAllCache[absPath] = getAllHelper(absPath, this);
-    }
-    return this._getAllCache[absPath];
-};
-
 function getAllHelper (absPath, provider) {
-    if (!fs.existsSync(absPath)) {
-        return [];
-    }
+    if (!fs.existsSync(absPath)) return [];
+
     // If dir itself is a plugin, return it in an array with one element.
-    if (fs.existsSync(path.join(absPath, 'plugin.xml'))) {
-        return [provider.get(absPath)];
-    }
-    var subdirs = fs.readdirSync(absPath);
-    var plugins = [];
-    subdirs.forEach(function (subdir) {
-        var d = path.join(absPath, subdir);
-        if (fs.existsSync(path.join(d, 'plugin.xml'))) {
+    if (fs.existsSync(path.join(absPath, 'plugin.xml'))) return [provider.get(absPath)];
+
+    const subdirs = fs.readdirSync(absPath);
+    const plugins = [];
+
+    subdirs.forEach(subdir => {
+        const dir = path.join(absPath, subdir);
+        const pluginXml = path.join(dir, 'plugin.xml');
+
+        if (fs.existsSync(pluginXml)) {
             try {
-                plugins.push(provider.get(d));
+                plugins.push(provider.get(dir));
             } catch (e) {
-                events.emit('warn', 'Error parsing ' + path.join(d, 'plugin.xml.\n' + e.stack));
+                events.emit('warn', `Error parsing ${pluginXml}\n${e.stack}`);
             }
         }
     });
+
     return plugins;
 }
 
