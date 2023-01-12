@@ -69,6 +69,7 @@ function getAllHelper (absPath, provider) {
     // Match normal and scoped plugins
     const pluginXmlPaths = glob.sync('{,@*/}*/plugin.xml', {
         cwd: absPath,
+        root: absPath,
         nodir: true,
         absolute: true
     }).map(path.normalize);
