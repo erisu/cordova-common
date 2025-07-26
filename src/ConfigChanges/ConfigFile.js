@@ -105,12 +105,53 @@ class ConfigFile {
             case 'merge':
                 result = modules.xml_helpers.graftXMLMerge(this.data, xml_to_graft, selector, xml_child);
                 break;
+
+            case 'mergeCreate':
+                // try to merge
+                result = modules.xml_helpers.graftXMLMerge(this.data, xml_to_graft, selector, xml_child);
+
+                // If false, try to create...
+                if (!result) {
+                    const xpathSegment = this.#popXPathSegmentAndExtractAttributes(selector);
+
+                    selector = xpathSegment.basePath;
+
+                    xml_to_graft[0]?.attrib = {
+                        ...xml_to_graft[0]?.attrib,
+                        ...xpathSegment.attributes
+                    };
+
+                    result = modules.xml_helpers.graftXML(this.data, xml_to_graft, selector, xml_child.after);
+                }
+                break;
+
             case 'overwrite':
                 result = modules.xml_helpers.graftXMLOverwrite(this.data, xml_to_graft, selector, xml_child);
                 break;
+
+            case 'overwriteCreate':
+                // try to overwrite
+                result = modules.xml_helpers.graftXMLOverwrite(this.data, xml_to_graft, selector, xml_child);
+
+                // If false, try to create...
+                if (!result) {
+                    const xpathSegment = this.#popXPathSegmentAndExtractAttributes(selector);
+
+                    selector = xpathSegment.basePath;
+
+                    xml_to_graft[0]?.attrib = {
+                        ...xml_to_graft[0]?.attrib,
+                        ...xpathSegment.attributes
+                    };
+
+                    result = modules.xml_helpers.graftXML(this.data, xml_to_graft, selector, xml_child.after);
+                }
+                break;
+
             case 'remove':
                 result = modules.xml_helpers.pruneXMLRemove(this.data, selector, xml_to_graft);
                 break;
+
             default:
                 result = modules.xml_helpers.graftXML(this.data, xml_to_graft, selector, xml_child.after);
             }
@@ -179,6 +220,25 @@ class ConfigFile {
         const projectName = path.basename(matches[0], '.xcodeproj');
         xcodeprojMap.set(project_dir, projectName);
         return projectName;
+    }
+
+    #popXPathSegmentAndExtractAttributes (selector) {
+        const match = selector.match(/\/([^\/\[]+)(\[[^\]]+\])?$/);
+        if (!match) return { basePath: selector, tag: null, attributes: null };
+
+        const basePath = selector.slice(0, match.index);
+        const tag = match[1];
+        const rawAttr = match[2];
+
+        const attributes = {};
+        if (rawAttr) {
+            const attrMatches = [...rawAttr.matchAll(/@([^=]+)='([^']+)'/g)];
+            for (const [, key, value] of attrMatches) {
+                attributes[key] = value;
+            }
+        }
+
+        return { basePath, tag, attributes };
     }
 }
 
